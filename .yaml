@@ -1,1316 +1,178 @@
-openapi: 3.0.0
+openapi: 3.1.0
 info:
-  title: API Fédération de Collectivités Agricoles de Madagascar
+  title: Agricultural federation API
   description: |
-    API pour la gestion digitalisée des processus administratifs de la fédération.
-  version: 3.2.0
-  contact:
-    name: Fédération des Collectivités Agricoles
-  license:
-    name: Proprietary
-
+    # Versioning
+    This API uses semantic versioning (MAJOR.MINOR.PATCH). Available versions are : 
+    - v0.0.1 (2026-04-21) : POST /collectivities for collectivities creation and POST /members for members creation.
+  version: 0.0.1
 servers:
-  - url: https://api.federation-agricole.mg/v1
-    description: Production
-  - url: http://localhost:8080/v1
-    description: Développement
-
-tags:
-  - name: A - Collectivités
-  - name: B - Membres
-  - name: C - Cotisations
-  - name: D - Comptes
-  - name: E - Activités
-  - name: F - Assiduité
-  - name: G - Statistiques collectivités
-  - name: H - Statistiques fédération
-
+  - url: 'https://localhost:8080'
+paths:
+  '/collectivities':
+    post:
+      summary: Create list of collectivities
+      description: |
+        During collectivity request body creation, only members ID are provided to identify members. 
+        But the response content includes members information, not only their IDs.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/CreateCollectivity'
+      responses:
+        201:
+          description: List of created collectivities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Collectivity'
+        400:
+          description: Collectivity without federation approval or structure missing.
+        404:
+          description: Member not found.
+  '/members':
+    post:
+      summary: Create list of members
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/CreateMember'
+      responses:
+        201:
+          description: List of created members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Member'
+        400:
+          description: |
+            The following case must return a bad request exception : 
+            - Member with bad referees or without proper payment.
+            - Membership dues not paid or registration fee not paid.
+        404:
+          description: Either collectivity or member not found.
 components:
   schemas:
-    # ========== ENUMS ==========
-    Genre:
-      type: string
-      enum: [feminin, masculin]
-    
-    Poste:
-      type: string
-      enum: [president, president_adjoint, tresorier, secretaire, membre_confirme, membre_junior]
-    
-    TypeCotisation:
-      type: string
-      enum: [mensuelle, annuelle, ponctuelle]
-    
-    ModePaiement:
-      type: string
-      enum: [espece, virement_bancaire, mobile_money]
-    
-    TypeCompte:
-      type: string
-      enum: [caisse, bancaire, mobile_money]
-    
-    Banque:
-      type: string
-      enum: [BRED, MCB, BMOI, BOA, BGFI, AFG, ACCES_BANQUE, BAOBAB, SIPEM]
-    
-    ServiceMobileMoney:
-      type: string
-      enum: [Orange_Money, Mvola, Airtel_Money]
-    
-    TypeActivite:
-      type: string
-      enum: [assemblee_generale_mensuelle, formation_junior, exceptionnelle, federation]
-    
-    StatutPresence:
-      type: string
-      enum: [present, excuse, absent]
-    
-    RelationParrainage:
-      type: string
-      enum: [famille, ami, collegue, autre]
-
-    # ========== MODÈLES ==========
-    Adresse:
+    CreateCollectivity:
       type: object
       properties:
-        rue:
+        location:
           type: string
-        ville:
-          type: string
-        code_postal:
-          type: string
-    
-    Membre:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        nom:
-          type: string
-        prenom:
-          type: string
-        date_naissance:
-          type: string
-          format: date
-        genre:
-          $ref: '#/components/schemas/Genre'
-        adresse:
-          $ref: '#/components/schemas/Adresse'
-        metier:
-          type: string
-        telephone:
-          type: string
-          pattern: '^[0-9]{10}$'
-        email:
-          type: string
-          format: email
-        date_adhesion:
-          type: string
-          format: date
-        anciennete_jours:
-          type: integer
-    
-    Collectivite:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        numero_unique:
-          type: string
-        nom:
-          type: string
-        ville:
-          type: string
-        specialite:
-          type: string
-        date_creation:
-          type: string
-          format: date
-        statut:
-          type: string
-          enum: [active, en_attente, fermee]
-        cotisation_annuelle_obligatoire:
-          type: integer
-        jour_assemblee_mensuelle:
-          type: string
-        jour_formation_junior:
-          type: string
-    
-    Cotisation:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        membre_id:
-          type: string
-          format: uuid
-        collectivite_id:
-          type: string
-          format: uuid
-        type:
-          $ref: '#/components/schemas/TypeCotisation'
-        montant:
-          type: integer
-        date_encaissement:
-          type: string
-          format: date-time
-        mode_paiement:
-          $ref: '#/components/schemas/ModePaiement'
-        reference_paiement:
-          type: string
-    
-    Compte:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        type:
-          $ref: '#/components/schemas/TypeCompte'
-        solde:
-          type: integer
-        date_solde:
-          type: string
-          format: date-time
-        collectivite_id:
-          type: string
-          format: uuid
-      discriminator:
-        propertyName: type
-        mapping:
-          caisse: '#/components/schemas/CompteCaisse'
-          bancaire: '#/components/schemas/CompteBancaire'
-          mobile_money: '#/components/schemas/CompteMobileMoney'
-    
-    CompteCaisse:
-      allOf:
-        - $ref: '#/components/schemas/Compte'
-        - type: object
-          properties:
-            type:
-              type: string
-              const: caisse
-    
-    CompteBancaire:
-      allOf:
-        - $ref: '#/components/schemas/Compte'
-        - type: object
-          properties:
-            type:
-              type: string
-              const: bancaire
-            titulaire:
-              type: string
-            banque:
-              $ref: '#/components/schemas/Banque'
-            numero_compte:
-              type: string
-              pattern: '^[0-9]{23}$'
-    
-    CompteMobileMoney:
-      allOf:
-        - $ref: '#/components/schemas/Compte'
-        - type: object
-          properties:
-            type:
-              type: string
-              const: mobile_money
-            titulaire:
-              type: string
-            service:
-              $ref: '#/components/schemas/ServiceMobileMoney'
-            telephone:
-              type: string
-              pattern: '^[0-9]{10}$'
-    
-    Activite:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        type:
-          $ref: '#/components/schemas/TypeActivite'
-        titre:
-          type: string
-        description:
-          type: string
-        date:
-          type: string
-          format: date
-        heure:
-          type: string
-        lieu:
-          type: string
-        obligatoire:
-          type: boolean
-        collectivite_id:
-          type: string
-          format: uuid
-    
-    Presence:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        membre_id:
-          type: string
-          format: uuid
-        activite_id:
-          type: string
-          format: uuid
-        statut:
-          $ref: '#/components/schemas/StatutPresence'
-        motif_absence:
-          type: string
-        date_saisie:
-          type: string
-          format: date-time
-    
-    PresenceExterne:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        membre_id:
-          type: string
-          format: uuid
-        activite_id:
-          type: string
-          format: uuid
-        collectivite_origine_id:
-          type: string
-          format: uuid
-        date_presence:
-          type: string
-          format: date-time
-    
-    RapportPresident:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        collectivite_id:
-          type: string
-          format: uuid
-        annee:
-          type: integer
-        mois:
-          type: integer
-        nb_membres_actifs:
-          type: integer
-        taux_assiduite_global:
-          type: number
-        date_soumission:
-          type: string
-          format: date-time
-    
-    RapportFederation:
-      type: object
-      properties:
-        periode_debut:
-          type: string
-          format: date
-        periode_fin:
-          type: string
-          format: date
-        type_rapport:
-          type: string
-          enum: [mensuel, annuel]
-        donnees_collectivites:
+        members:
           type: array
           items:
-            $ref: '#/components/schemas/StatistiquesFederationParCollectivite'
-    
-    StatistiquesFederationParCollectivite:
+            schema:
+              $ref: '#/components/schemas/MemberIdentifier'
+        federationApproval:
+          type: boolean
+        structure:
+          $ref: '#/components/schemas/CreateCollectivityStructure'
+    CreateCollectivityStructure:
       type: object
       properties:
-        collectivite_id:
-          type: string
-          format: uuid
-        collectivite_nom:
-          type: string
-        taux_assiduite_global:
-          type: number
-        pourcentage_membres_a_jour_cotisation:
-          type: number
-        nombre_nouveaux_adherents:
-          type: integer
-    
-    StatistiquesMembre:
+        president:
+          $ref: '#/components/schemas/MemberIdentifier'
+        vicePresident:
+          $ref: '#/components/schemas/MemberIdentifier'
+        treasurer:
+          $ref: '#/components/schemas/MemberIdentifier'
+        secretary:
+          $ref: '#/components/schemas/MemberIdentifier'
+    CollectivityStructure:
       type: object
       properties:
-        membre_id:
+        president:
+          $ref: '#/components/schemas/Member'
+        vicePresident:
+          $ref: '#/components/schemas/Member'
+        treasurer:
+          $ref: '#/components/schemas/Member'
+        secretary:
+          $ref: '#/components/schemas/Member'
+    Collectivity:
+      type: object
+      properties:
+        id:
           type: string
-          format: uuid
-        periode_debut:
+        location:
+          type: string
+        structure:
+          $ref: '#/components/schemas/CollectivityStructure'
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/Member'
+    MemberIdentifier:
+      type: string
+    CreateMember:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/MemberInformation'
+      properties:
+        collectivityIdentifier:
+          type: string
+        referees:
+          type: array
+          items:
+            $ref: '#/components/schemas/MemberIdentifier'
+        registrationFeePaid:
+          type: boolean
+        membershipDuesPaid:
+          type: boolean
+    MemberInformation:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        birthDate:
           type: string
           format: date
-        periode_fin:
+        gender:
+          $ref: '#/components/schemas/Gender'
+        address:
           type: string
-          format: date
-        taux_assiduite:
-          type: number
-        montant_total_encaisse:
-          type: integer
-        montant_impaye:
-          type: integer
-
-  parameters:
-    collectiviteIdParam:
-      name: collectiviteId
-      in: path
-      required: true
-      schema:
-        type: string
-        format: uuid
-    membreIdParam:
-      name: membreId
-      in: path
-      required: true
-      schema:
-        type: string
-        format: uuid
-    activiteIdParam:
-      name: activiteId
-      in: path
-      required: true
-      schema:
-        type: string
-        format: uuid
-    compteIdParam:
-      name: compteId
-      in: path
-      required: true
-      schema:
-        type: string
-        format: uuid
-
-  responses:
-    BadRequest:
-      description: Requête invalide
-    NotFound:
-      description: Ressource non trouvée
-    Conflict:
-      description: Conflit avec l'état actuel
-    UnprocessableEntity:
-      description: Règle métier non respectée
-    Forbidden:
-      description: Accès non autorisé
-
-# ========== PATHS ==========
-paths:
-  # ==================== A - OUVERTURE D'UNE NOUVELLE COLLECTIVITÉ ====================
-  /collectivites:
-    post:
-      tags: [A - Collectivités]
-      summary: "[A] Créer une collectivité"
-      description: |
-        Conditions : ≥10 membres (dont 5 avec ≥6 mois d'ancienneté), postes pourvus, autorisation fédération
-      operationId: creerCollectivite
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - nom
-                - ville
-                - specialite
-                - membres_fondateurs_ids
-                - autorisation_federation_ref
-              properties:
-                nom:
-                  type: string
-                ville:
-                  type: string
-                specialite:
-                  type: string
-                cotisation_annuelle_obligatoire:
-                  type: integer
-                jour_assemblee_mensuelle:
-                  type: string
-                jour_formation_junior:
-                  type: string
-                membres_fondateurs_ids:
-                  type: array
-                  items:
-                    type: string
-                    format: uuid
-                  minItems: 10
-                postes_ids:
-                  type: object
-                  properties:
-                    president_id:
-                      type: string
-                      format: uuid
-                    president_adjoint_id:
-                      type: string
-                      format: uuid
-                    tresorier_id:
-                      type: string
-                      format: uuid
-                    secretaire_id:
-                      type: string
-                      format: uuid
-                autorisation_federation_ref:
-                  type: string
-      responses:
-        '201':
-          description: Collectivité créée
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Collectivite'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-
-    get:
-      tags: [A - Collectivités]
-      summary: "[A] Lister les collectivités"
-      operationId: listerCollectivites
-      parameters:
-        - name: ville
-          in: query
-          schema:
-            type: string
-        - name: specialite
-          in: query
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Liste des collectivités
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Collectivite'
-
-  /collectivites/{collectiviteId}:
-    get:
-      tags: [A - Collectivités]
-      summary: "[A] Détails d'une collectivité"
-      parameters:
-        - $ref: '#/components/parameters/collectiviteIdParam'
-      responses:
-        '200':
-          description: Détails
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Collectivite'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  # ==================== B - ADMISSION D'UN NOUVEAU MEMBRE ====================
-  /collectivites/{collectiviteId}/membres:
-    post:
-      tags: [B - Membres]
-      summary: "[B] Admettre un nouveau membre"
-      description: |
-        Conditions (mises à jour 21/04/2026) :
-        - Parrainage par ≥2 membres confirmés (dont ≥1 de la collectivité cible)
-        - Fournir informations personnelles + relation avec chaque parrain
-        - Payer 50.000 MGA + cotisations annuelles obligatoires
-      operationId: admettreMembre
-      parameters:
-        - $ref: '#/components/parameters/collectiviteIdParam'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - nom
-                - prenom
-                - date_naissance
-                - genre
-                - adresse
-                - metier
-                - telephone
-                - email
-                - parrainages
-                - preuve_paiement_adhésion
-                - preuve_paiement_cotisations_annuelles
-              properties:
-                nom:
-                  type: string
-                prenom:
-                  type: string
-                date_naissance:
-                  type: string
-                  format: date
-                genre:
-                  $ref: '#/components/schemas/Genre'
-                adresse:
-                  $ref: '#/components/schemas/Adresse'
-                metier:
-                  type: string
-                telephone:
-                  type: string
-                  pattern: '^[0-9]{10}$'
-                email:
-                  type: string
-                  format: email
-                parrainages:
-                  type: array
-                  items:
-                    type: object
-                    required:
-                      - parrain_id
-                      - relation
-                    properties:
-                      parrain_id:
-                        type: string
-                        format: uuid
-                      relation:
-                        $ref: '#/components/schemas/RelationParrainage'
-                  minItems: 2
-                preuve_paiement_adhésion:
-                  type: object
-                  required:
-                    - mode
-                    - reference
-                  properties:
-                    mode:
-                      $ref: '#/components/schemas/ModePaiement'
-                    reference:
-                      type: string
-                    montant:
-                      type: integer
-                      const: 50000
-                preuve_paiement_cotisations_annuelles:
-                  type: object
-                  required:
-                    - mode
-                    - reference
-                    - montant
-                  properties:
-                    mode:
-                      $ref: '#/components/schemas/ModePaiement'
-                    reference:
-                      type: string
-                    montant:
-                      type: integer
-      responses:
-        '201':
-          description: Membre admis
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Membre'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-
-    get:
-      tags: [B - Membres]
-      summary: "[B] Lister les membres d'une collectivité"
-      parameters:
-        - $ref: '#/components/parameters/collectiviteIdParam'
-        - name: actif
-          in: query
-          schema:
-            type: boolean
-      responses:
-        '200':
-          description: Liste des membres
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Membre'
-
-  /membres/{membreId}:
-    get:
-      tags: [B - Membres]
-      summary: "[B] Détails d'un membre"
-      parameters:
-        - $ref: '#/components/parameters/membreIdParam'
-      responses:
-        '200':
-          description: Détails
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Membre'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-    put:
-      tags: [B - Membres]
-      summary: "[B] Modifier un membre"
-      parameters:
-        - $ref: '#/components/parameters/membreIdParam'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                adresse:
-                  $ref: '#/components/schemas/Adresse'
-                telephone:
-                  type: string
-                email:
-                  type: string
-                metier:
-                  type: string
-      responses:
-        '200':
-          description: Membre mis à jour
-
-    delete:
-      tags: [B - Membres]
-      summary: "[B] Démission d'un membre"
-      parameters:
-        - $ref: '#/components/parameters/membreIdParam'
-      responses:
-        '204':
-          description: Démission enregistrée
-
-  /membres/{membreId}/changer-collectivite:
-    post:
-      tags: [B - Membres]
-      summary: "[B] Changer de collectivité"
-      parameters:
-        - $ref: '#/components/parameters/membreIdParam'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - nouvelle_collectivite_id
-              properties:
-                nouvelle_collectivite_id:
-                  type: string
-                  format: uuid
-      responses:
-        '200':
-          description: Changement effectué
-
-  # ==================== C - COTISATIONS ET PAIEMENTS ====================
-  /collectivites/{collectiviteId}/cotisations:
-    post:
-      tags: [C - Cotisations]
-      summary: "[C] Enregistrer une cotisation"
-      description: Le trésorier enregistre un encaissement (montant, date, mode)
-      parameters:
-        - $ref: '#/components/parameters/collectiviteIdParam'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - membre_id
-                - type
-                - montant
-                - mode_paiement
-              properties:
-                membre_id:
-                  type: string
-                  format: uuid
-                type:
-                  $ref: '#/components/schemas/TypeCotisation'
-                montant:
-                  type: integer
-                mode_paiement:
-                  $ref: '#/components/schemas/ModePaiement'
-                reference_paiement:
-                  type: string
-      responses:
-        '201':
-          description: Cotisation enregistrée
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Cotisation'
-
-    get:
-      tags: [C - Cotisations]
-      summary: "[C] Lister les cotisations"
-      parameters:
-        - $ref: '#/components/parameters/collectiviteIdParam'
-        - name: annee
-          in: query
-          schema:
-            type: integer
-        - name: mois
-          in: query
-          schema:
-            type: integer
-        - name: membre_id
-          in: query
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Liste des cotisations
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Cotisation'
-
-  /collectivites/{collectiviteId}/cotisations/obligatoires:
-    get:
-      tags: [C - Cotisations]
-      summary: "[C] Montant des cotisations annuelles obligatoires"
-      parameters:
-        - $ref: '#/components/parameters/collectiviteIdParam'
-      responses:
-        '200':
-          description: Montant
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  collectivite_id:
-                    type: string
-                  cotisation_annuelle_obligatoire:
-                    type: integer
-
-  /federation/cotisations/reversement:
-    post:
-      tags: [C - Cotisations]
-      summary: "[C] Reverser des cotisations à la fédération"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - collectivite_id
-                - montant
-                - periode_debut
-                - periode_fin
-              properties:
-                collectivite_id:
-                  type: string
-                  format: uuid
-                montant:
-                  type: integer
-                periode_debut:
-                  type: string
-                  format: date
-                periode_fin:
-                  type: string
-                  format: date
-      responses:
-        '201':
-          description: Reversement enregistré
-
-  # ==================== D - GESTION DES COMPTES ====================
-  /collectivites/{collectiviteId}/comptes:
-    get:
-      tags: [D - Comptes]
-      summary: "[D] Lister les comptes d'une collectivité"
-      description: Une seule caisse, plusieurs comptes bancaires/mobile money
-      parameters:
-        - $ref: '#/components/parameters/collectiviteIdParam'
-      responses:
-        '200':
-          description: Liste des comptes
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  oneOf:
-                    - $ref: '#/components/schemas/CompteCaisse'
-                    - $ref: '#/components/schemas/CompteBancaire'
-                    - $ref: '#/components/schemas/CompteMobileMoney'
-
-    post:
-      tags: [D - Comptes]
-      summary: "[D] Ajouter un compte bancaire ou mobile money"
-      parameters:
-        - $ref: '#/components/parameters/collectiviteIdParam'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              oneOf:
-                - $ref: '#/components/schemas/CompteBancaire'
-                - $ref: '#/components/schemas/CompteMobileMoney'
-      responses:
-        '201':
-          description: Compte ajouté
-
-  /collectivites/{collectiviteId}/comptes/{compteId}/solde:
-    get:
-      tags: [D - Comptes]
-      summary: "[D] Solde d'un compte"
-      parameters:
-        - $ref: '#/components/parameters/collectiviteIdParam'
-        - $ref: '#/components/parameters/compteIdParam'
-        - name: date
-          in: query
-          schema:
-            type: string
-            format: date
-      responses:
-        '200':
-          description: Solde
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  compte_id:
-                    type: string
-                  solde:
-                    type: integer
-                  devise:
-                    type: string
-                    example: MGA
-
-  /federation/comptes:
-    get:
-      tags: [D - Comptes]
-      summary: "[D] Lister les comptes de la fédération"
-      responses:
-        '200':
-          description: Liste des comptes
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  oneOf:
-                    - $ref: '#/components/schemas/CompteCaisse'
-                    - $ref: '#/components/schemas/CompteBancaire'
-                    - $ref: '#/components/schemas/CompteMobileMoney'
-
-  # ==================== E - GESTION DES ACTIVITÉS ====================
-  /collectivites/{collectiviteId}/activites:
-    get:
-      tags: [E - Activités]
-      summary: "[E] Lister les activités d'une collectivité"
-      parameters:
-        - $ref: '#/components/parameters/collectiviteIdParam'
-        - name: obligatoire
-          in: query
-          schema:
-            type: boolean
-      responses:
-        '200':
-          description: Liste des activités
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Activite'
-
-    post:
-      tags: [E - Activités]
-      summary: "[E] Créer une activité exceptionnelle"
-      parameters:
-        - $ref: '#/components/parameters/collectiviteIdParam'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - titre
-                - date
-                - heure
-                - lieu
-              properties:
-                titre:
-                  type: string
-                description:
-                  type: string
-                date:
-                  type: string
-                  format: date
-                heure:
-                  type: string
-                lieu:
-                  type: string
-                obligatoire:
-                  type: boolean
-                  default: true
-                membres_concernes_ids:
-                  type: array
-                  items:
-                    type: string
-                    format: uuid
-      responses:
-        '201':
-          description: Activité créée
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Activite'
-
-  /federation/activites:
-    get:
-      tags: [E - Activités]
-      summary: "[E] Lister les activités de la fédération"
-      responses:
-        '200':
-          description: Liste des activités
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Activite'
-
-    post:
-      tags: [E - Activités]
-      summary: "[E] Planifier une activité fédérale"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - titre
-                - date
-                - heure
-                - lieu
-              properties:
-                titre:
-                  type: string
-                description:
-                  type: string
-                date:
-                  type: string
-                  format: date
-                heure:
-                  type: string
-                lieu:
-                  type: string
-                obligatoire:
-                  type: boolean
-                collectivites_concernees_ids:
-                  type: array
-                  items:
-                    type: string
-                    format: uuid
-      responses:
-        '201':
-          description: Activité planifiée
-
-  # ==================== F - SUIVI DE L'ASSIDUITÉ ====================
-  /activites/{activiteId}/presences:
-    post:
-      tags: [F - Assiduité]
-      summary: "[F] Enregistrer les présences"
-      description: Le secrétaire enregistre les présences (présent/excusé/absent)
-      parameters:
-        - $ref: '#/components/parameters/activiteIdParam'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - presences
-              properties:
-                presences:
-                  type: array
-                  items:
-                    type: object
-                    required:
-                      - membre_id
-                      - statut
-                    properties:
-                      membre_id:
-                        type: string
-                        format: uuid
-                      statut:
-                        $ref: '#/components/schemas/StatutPresence'
-                      motif_absence:
-                        type: string
-      responses:
-        '201':
-          description: Présences enregistrées
-
-    get:
-      tags: [F - Assiduité]
-      summary: "[F] Présences pour une activité"
-      parameters:
-        - $ref: '#/components/parameters/activiteIdParam'
-      responses:
-        '200':
-          description: Liste des présences
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Presence'
-
-  /activites/{activiteId}/presences/externes:
-    post:
-      tags: [F - Assiduité]
-      summary: "[F] Présence d'un membre d'une autre collectivité"
-      description: Ne compte pas dans le taux d'assiduité annuel du membre
-      parameters:
-        - $ref: '#/components/parameters/activiteIdParam'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - membre_id
-                - collectivite_origine_id
-              properties:
-                membre_id:
-                  type: string
-                  format: uuid
-                collectivite_origine_id:
-                  type: string
-                  format: uuid
-                note:
-                  type: string
-      responses:
-        '201':
-          description: Présence externe enregistrée
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PresenceExterne'
-
-  /membres/{membreId}/assiduite:
-    get:
-      tags: [F - Assiduité]
-      summary: "[F] Taux d'assiduité d'un membre"
-      parameters:
-        - $ref: '#/components/parameters/membreIdParam'
-        - name: date_debut
-          in: query
-          required: true
-          schema:
-            type: string
-            format: date
-        - name: date_fin
-          in: query
-          required: true
-          schema:
-            type: string
-            format: date
-      responses:
-        '200':
-          description: Taux d'assiduité
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  membre_id:
-                    type: string
-                  taux_assiduite:
-                    type: number
-                  nb_present:
-                    type: integer
-                  nb_total_activites_obligatoires:
-                    type: integer
-
-  # ==================== G - STATISTIQUES DES COLLECTIVITÉS ====================
-  /collectivites/{collectiviteId}/statistiques/globales:
-    get:
-      tags: [G - Statistiques collectivités]
-      summary: "[G] Rapport mensuel du président (consultation)"
-      parameters:
-        - $ref: '#/components/parameters/collectiviteIdParam'
-        - name: annee
-          in: query
-          required: true
-          schema:
-            type: integer
-        - name: mois
-          in: query
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: Rapport
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RapportPresident'
-
-  /collectivites/{collectiviteId}/rapports-mensuels:
-    post:
-      tags: [G - Statistiques collectivités]
-      summary: "[G] Soumettre le rapport mensuel du président"
-      description: À soumettre mensuellement à la fédération
-      parameters:
-        - $ref: '#/components/parameters/collectiviteIdParam'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - annee
-                - mois
-                - nb_membres_actifs
-                - taux_assiduite_global
-              properties:
-                annee:
-                  type: integer
-                mois:
-                  type: integer
-                nb_membres_actifs:
-                  type: integer
-                taux_assiduite_global:
-                  type: number
-      responses:
-        '201':
-          description: Rapport soumis
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RapportPresident'
-        '409':
-          description: Rapport déjà existant pour cette période
-
-  /collectivites/{collectiviteId}/statistiques/membres:
-    get:
-      tags: [G - Statistiques collectivités]
-      summary: "[G] Statistiques détaillées des membres actifs"
-      parameters:
-        - $ref: '#/components/parameters/collectiviteIdParam'
-        - name: date_debut
-          in: query
-          required: true
-          schema:
-            type: string
-            format: date
-        - name: date_fin
-          in: query
-          required: true
-          schema:
-            type: string
-            format: date
-      responses:
-        '200':
-          description: Statistiques
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/StatistiquesMembre'
-
-  # ==================== H - STATISTIQUES DE LA FÉDÉRATION ====================
-  /federation/statistiques/rapport-mensuel:
-    get:
-      tags: [H - Statistiques fédération]
-      summary: "[H] Rapport mensuel de la fédération"
-      description: Taux d'assiduité, % à jour cotisation, nouveaux adhérents par collectivité
-      parameters:
-        - name: annee
-          in: query
-          required: true
-          schema:
-            type: integer
-        - name: mois
-          in: query
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: Rapport mensuel
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RapportFederation'
-
-  /federation/statistiques/rapport-annuel:
-    get:
-      tags: [H - Statistiques fédération]
-      summary: "[H] Rapport annuel de la fédération"
-      parameters:
-        - name: annee
-          in: query
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: Rapport annuel
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RapportFederation'
-
-  /federation/statistiques/classement-assiduite:
-    get:
-      tags: [H - Statistiques fédération]
-      summary: "[H] Classement des collectivités par assiduité"
-      parameters:
-        - name: annee
-          in: query
-          required: true
-          schema:
-            type: integer
-        - name: mois
-          in: query
-          schema:
-            type: integer
-        - name: limite
-          in: query
-          schema:
-            type: integer
-            default: 10
-        - name: ordre
-          in: query
-          schema:
-            type: string
-            enum: [asc, desc]
-            default: desc
-      responses:
-        '200':
-          description: Classement
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    collectivite_id:
-                      type: string
-                    collectivite_nom:
-                      type: string
-                    taux_assiduite_global:
-                      type: number
-                    rang:
-                      type: integer
+        profession:
+          type: string
+        phoneNumber:
+          type: int
+        email:
+          type: string
+        occupation:
+          $ref: '#/components/schemas/MemberOccupation'
+    Member:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/MemberInformation'
+      properties:
+        id:
+          $ref: '#/components/schemas/MemberIdentifier'
+        referees:
+          type: array
+          items:
+            $ref: '#/components/schemas/Member'
+    Gender:
+      type: string
+      enum:
+        - MALE
+        - FEMALE
+    MemberOccupation:
+      type: string
+      enum:
+        - JUNIOR
+        - SENIOR
+        - SECRETARY
+        - TREASURER
+        - VICE_PRESIDENT
+        - PRESIDENT
