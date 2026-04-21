@@ -40,39 +40,133 @@ public class Member {
         this.refereeRelations = new ArrayList<>();
     }
 
+    public String getId() {
+        return id;
+    }
 
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
-    public String getFirstName() { return firstName; }
-    public void setFirstName(String firstName) { this.firstName = firstName; }
-    public String getLastName() { return lastName; }
-    public void setLastName(String lastName) { this.lastName = lastName; }
-    public LocalDate getBirthDate() { return birthDate; }
-    public void setBirthDate(LocalDate birthDate) { this.birthDate = birthDate; }
-    public Gender getGender() { return gender; }
-    public void setGender(Gender gender) { this.gender = gender; }
-    public String getAddress() { return address; }
-    public void setAddress(String address) { this.address = address; }
-    public String getProfession() { return profession; }
-    public void setProfession(String profession) { this.profession = profession; }
-    public String getPhoneNumber() { return phoneNumber; }
-    public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
-    public MemberOccupation getOccupation() { return occupation; }
-    public void setOccupation(MemberOccupation occupation) { this.occupation = occupation; }
-    public LocalDate getAdhesionDate() { return adhesionDate; }
-    public void setAdhesionDate(LocalDate adhesionDate) { this.adhesionDate = adhesionDate; }
-    public String getCollectivityId() { return collectivityId; }
-    public void setCollectivityId(String collectivityId) { this.collectivityId = collectivityId; }
-    public List<String> getRefereeIds() { return refereeIds; }
-    public void setRefereeIds(List<String> refereeIds) { this.refereeIds = refereeIds; }
-    public boolean isRegistrationFeePaid() { return registrationFeePaid; }
-    public void setRegistrationFeePaid(boolean registrationFeePaid) { this.registrationFeePaid = registrationFeePaid; }
-    public boolean isMembershipDuesPaid() { return membershipDuesPaid; }
-    public void setMembershipDuesPaid(boolean membershipDuesPaid) { this.membershipDuesPaid = membershipDuesPaid; }
-    public List<RefereeRelation> getRefereeRelations() { return refereeRelations; }
-    public void setRefereeRelations(List<RefereeRelation> refereeRelations) { this.refereeRelations = refereeRelations; }
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
+
+    public LocalDate getBirthDate() {
+        return birthDate;
+    }
+
+    public void setBirthDate(LocalDate birthDate) {
+        this.birthDate = birthDate;
+    }
+
+    public Gender getGender() {
+        return gender;
+    }
+
+    public void setGender(Gender gender) {
+        this.gender = gender;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
+    public String getProfession() {
+        return profession;
+    }
+
+    public void setProfession(String profession) {
+        this.profession = profession;
+    }
+
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public MemberOccupation getOccupation() {
+        return occupation;
+    }
+
+    public void setOccupation(MemberOccupation occupation) {
+        this.occupation = occupation;
+    }
+
+    public LocalDate getAdhesionDate() {
+        return adhesionDate;
+    }
+
+    public void setAdhesionDate(LocalDate adhesionDate) {
+        this.adhesionDate = adhesionDate;
+    }
+
+    public String getCollectivityId() {
+        return collectivityId;
+    }
+
+    public void setCollectivityId(String collectivityId) {
+        this.collectivityId = collectivityId;
+    }
+
+    public List<String> getRefereeIds() {
+        return refereeIds;
+    }
+
+    public void setRefereeIds(List<String> refereeIds) {
+        this.refereeIds = refereeIds;
+    }
+
+    public boolean isRegistrationFeePaid() {
+        return registrationFeePaid;
+    }
+
+    public void setRegistrationFeePaid(boolean registrationFeePaid) {
+        this.registrationFeePaid = registrationFeePaid;
+    }
+
+    public boolean isMembershipDuesPaid() {
+        return membershipDuesPaid;
+    }
+
+    public void setMembershipDuesPaid(boolean membershipDuesPaid) {
+        this.membershipDuesPaid = membershipDuesPaid;
+    }
+
+    public List<RefereeRelation> getRefereeRelations() {
+        return refereeRelations;
+    }
+
+    public void setRefereeRelations(List<RefereeRelation> refereeRelations) {
+        this.refereeRelations = refereeRelations;
+    }
 
     public static class RefereeRelation {
         private String refereeId;
