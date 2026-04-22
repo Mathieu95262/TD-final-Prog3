@@ -2,12 +2,11 @@ package org.example.tdfinalprog3.model;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 public class Collectivity {
     private String id;
+    private String number;
     private String name;
     private String location;
     private String specialty;
@@ -88,6 +87,11 @@ public class Collectivity {
     public void setMemberIds(List<String> memberIds) {
         this.memberIds = memberIds;
     }
+
+    public Collection<Object> getNumber() {
+        return Collections.singleton(number);
+    }
+
     public static class CollectivityStructure {
         private String presidentId;
         private String vicePresidentId;

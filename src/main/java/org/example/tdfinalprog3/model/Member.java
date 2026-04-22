@@ -1,8 +1,5 @@
-
 package org.example.tdfinalprog3.model;
 
-import org.example.tdfinalprog3.model.enums.Gender;
-import org.example.tdfinalprog3.model.enums.MemberOccupation;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -10,6 +7,7 @@ import java.util.List;
 import java.util.UUID;
 
 public class Member {
+
     private String id;
     private String firstName;
     private String lastName;
@@ -17,20 +15,22 @@ public class Member {
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate birthDate;
 
-    private Gender gender;
+    private String gender;
     private String address;
     private String profession;
     private String phoneNumber;
     private String email;
-    private MemberOccupation occupation;
+    private String occupation;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate adhesionDate;
 
     private String collectivityId;
-    private List<String> refereeIds;
+
+    // Champs manquants ajoutés
     private boolean registrationFeePaid;
     private boolean membershipDuesPaid;
+    private List<String> refereeIds;
     private List<RefereeRelation> refereeRelations;
 
     public Member() {
@@ -38,7 +38,11 @@ public class Member {
         this.adhesionDate = LocalDate.now();
         this.refereeIds = new ArrayList<>();
         this.refereeRelations = new ArrayList<>();
+        this.registrationFeePaid = false;
+        this.membershipDuesPaid = false;
     }
+
+    // ========== Getters et Setters existants ==========
 
     public String getId() {
         return id;
@@ -72,11 +76,11 @@ public class Member {
         this.birthDate = birthDate;
     }
 
-    public Gender getGender() {
+    public String getGender() {
         return gender;
     }
 
-    public void setGender(Gender gender) {
+    public void setGender(String gender) {
         this.gender = gender;
     }
 
@@ -112,11 +116,11 @@ public class Member {
         this.email = email;
     }
 
-    public MemberOccupation getOccupation() {
+    public String getOccupation() {
         return occupation;
     }
 
-    public void setOccupation(MemberOccupation occupation) {
+    public void setOccupation(String occupation) {
         this.occupation = occupation;
     }
 
@@ -136,13 +140,7 @@ public class Member {
         this.collectivityId = collectivityId;
     }
 
-    public List<String> getRefereeIds() {
-        return refereeIds;
-    }
-
-    public void setRefereeIds(List<String> refereeIds) {
-        this.refereeIds = refereeIds;
-    }
+    // ========== Nouveaux Getters et Setters ==========
 
     public boolean isRegistrationFeePaid() {
         return registrationFeePaid;
@@ -160,6 +158,14 @@ public class Member {
         this.membershipDuesPaid = membershipDuesPaid;
     }
 
+    public List<String> getRefereeIds() {
+        return refereeIds;
+    }
+
+    public void setRefereeIds(List<String> refereeIds) {
+        this.refereeIds = refereeIds;
+    }
+
     public List<RefereeRelation> getRefereeRelations() {
         return refereeRelations;
     }
@@ -167,6 +173,62 @@ public class Member {
     public void setRefereeRelations(List<RefereeRelation> refereeRelations) {
         this.refereeRelations = refereeRelations;
     }
+
+    // ========== Méthodes utilitaires ==========
+
+    /**
+     * Ajoute un parrain avec sa relation
+     */
+    public void addReferee(String refereeId, String relationship) {
+        if (!this.refereeIds.contains(refereeId)) {
+            this.refereeIds.add(refereeId);
+        }
+        this.refereeRelations.add(new RefereeRelation(refereeId, relationship));
+    }
+
+    /**
+     * Vérifie si le membre est un membre confirmé (SENIOR ou poste spécifique)
+     */
+    public boolean isConfirmedMember() {
+        return occupation != null && (
+                occupation.equals("SENIOR") ||
+                        occupation.equals("PRESIDENT") ||
+                        occupation.equals("VICE_PRESIDENT") ||
+                        occupation.equals("TREASURER") ||
+                        occupation.equals("SECRETARY")
+        );
+    }
+
+    /**
+     * Vérifie si le membre est junior
+     */
+    public boolean isJunior() {
+        return occupation != null && occupation.equals("JUNIOR");
+    }
+
+    /**
+     * Vérifie si le membre a payé tous ses frais
+     */
+    public boolean hasPaidAllFees() {
+        return registrationFeePaid && membershipDuesPaid;
+    }
+
+    /**
+     * Calcule l'ancienneté en jours
+     */
+    public long getSeniorityDays() {
+        if (adhesionDate == null) return 0;
+        return java.time.temporal.ChronoUnit.DAYS.between(adhesionDate, LocalDate.now());
+    }
+
+    /**
+     * Vérifie si le membre a au moins X jours d'ancienneté
+     */
+    public boolean hasMinimumSeniority(int days) {
+        return getSeniorityDays() >= days;
+    }
+
+    // ========== Classe interne pour les relations de parrainage ==========
 
     public static class RefereeRelation {
         private String refereeId;
@@ -179,9 +241,34 @@ public class Member {
             this.relationship = relationship;
         }
 
-        public String getRefereeId() { return refereeId; }
-        public void setRefereeId(String refereeId) { this.refereeId = refereeId; }
-        public String getRelationship() { return relationship; }
-        public void setRelationship(String relationship) { this.relationship = relationship; }
+        public String getRefereeId() {
+            return refereeId;
+        }
+
+        public void setRefereeId(String refereeId) {
+            this.refereeId = refereeId;
+        }
+
+        public String getRelationship() {
+            return relationship;
+        }
+
+        public void setRelationship(String relationship) {
+            this.relationship = relationship;
+        }
+    }
+
+    // ========== toString ==========
+
+    @Override
+    public String toString() {
+        return "Member{" +
+                "id='" + id + '\'' +
+                ", firstName='" + firstName + '\'' +
+                ", lastName='" + lastName + '\'' +
+                ", email='" + email + '\'' +
+                ", occupation='" + occupation + '\'' +
+                ", collectivityId='" + collectivityId + '\'' +
+                '}';
     }
 }
