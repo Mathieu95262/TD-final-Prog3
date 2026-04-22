@@ -1,65 +1,110 @@
 package org.example.tdfinalprog3.repository;
 
 import org.example.tdfinalprog3.model.Member;
+import org.example.tdfinalprog3.model.enums.Gender;
+import org.example.tdfinalprog3.model.enums.MemberOccupation;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.LocalDate;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
+import java.util.List;
+import java.util.Optional;
 
 @Repository
 public class MemberRepository {
-    private final Map<String, Member> members = new ConcurrentHashMap<>();
+
+    private final JdbcTemplate jdbcTemplate;
+
+    public MemberRepository(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
+    // RowMapper pour convertir ResultSet en Member
+    private static class MemberRowMapper implements RowMapper<Member> {
+        @Override
+        public Member mapRow(ResultSet rs, int rowNum) throws SQLException {
+            Member member = new Member();
+            member.setId(rs.getString("id"));
+            member.setFirstName(rs.getString("first_name"));
+            member.setLastName(rs.getString("last_name"));
+            member.setBirthDate(rs.getDate("birth_date") != null ?
+                    rs.getDate("birth_date").toLocalDate() : null);
+            member.setGender(Gender.valueOf(rs.getString("gender")));
+            member.setAddress(rs.getString("address"));
+            member.setProfession(rs.getString("profession"));
+            member.setPhoneNumber(rs.getString("phone_number"));
+            member.setEmail(rs.getString("email"));
+            member.setOccupation(MemberOccupation.valueOf(rs.getString("occupation")));
+            member.setAdhesionDate(rs.getDate("adhesion_date") != null ?
+                    rs.getDate("adhesion_date").toLocalDate() : null);
+            member.setCollectivityId(rs.getString("collectivity_id"));
+            member.setRegistrationFeePaid(rs.getBoolean("registration_fee_paid"));
+            member.setMembershipDuesPaid(rs.getBoolean("membership_dues_paid"));
+            return member;
+        }
+    }
 
     public Member save(Member member) {
-        members.put(member.getId(), member);
+        String sql = "INSERT INTO members (id, first_name, last_name, birth_date, gender, address, " +
+                "profession, phone_number, email, occupation, adhesion_date, collectivity_id, " +
+                "registration_fee_paid, membership_dues_paid) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
+                "ON CONFLICT (id) DO UPDATE SET " +
+                "first_name = EXCLUDED.first_name, last_name = EXCLUDED.last_name, " +
+                "birth_date = EXCLUDED.birth_date, gender = EXCLUDED.gender, " +
+                "address = EXCLUDED.address, profession = EXCLUDED.profession, " +
+                "phone_number = EXCLUDED.phone_number, email = EXCLUDED.email, " +
+                "occupation = EXCLUDED.occupation, collectivity_id = EXCLUDED.collectivity_id, " +
+                "registration_fee_paid = EXCLUDED.registration_fee_paid, " +
+                "membership_dues_paid = EXCLUDED.membership_dues_paid";
+
+        jdbcTemplate.update(sql,
+                member.getId(),
+                member.getFirstName(),
+                member.getLastName(),
+                member.getBirthDate(),
+                member.getGender().name(),
+                member.getAddress(),
+                member.getProfession(),
+                member.getPhoneNumber(),
+                member.getEmail(),
+                member.getOccupation().name(),
+                member.getAdhesionDate(),
+                member.getCollectivityId(),
+                member.isRegistrationFeePaid(),
+                member.isMembershipDuesPaid()
+        );
         return member;
     }
 
     public Optional<Member> findById(String id) {
-        return Optional.ofNullable(members.get(id));
+        String sql = "SELECT * FROM members WHERE id = ?";
+        List<Member> members = jdbcTemplate.query(sql, new MemberRowMapper(), id);
+        return members.isEmpty() ? Optional.empty() : Optional.of(members.get(0));
     }
 
     public List<Member> findAll() {
-        return new ArrayList<>(members.values());
-    }
-
-    public List<Member> findByIds(List<String> ids) {
-        return ids.stream()
-                .map(members::get)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
+        String sql = "SELECT * FROM members";
+        return jdbcTemplate.query(sql, new MemberRowMapper());
     }
 
     public boolean existsById(String id) {
-        return members.containsKey(id);
+        String sql = "SELECT COUNT(*) FROM members WHERE id = ?";
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, id);
+        return count != null && count > 0;
     }
 
     public List<Member> findSeniorsByCollectivityId(String collectivityId) {
-        return members.values().stream()
-                .filter(m -> m.getCollectivityId() != null && m.getCollectivityId().equals(collectivityId))
-                .filter(m -> m.getOccupation() != null &&
-                        (m.getOccupation().name().equals("SENIOR") ||
-                                m.getOccupation().name().equals("PRESIDENT") ||
-                                m.getOccupation().name().equals("VICE_PRESIDENT") ||
-                                m.getOccupation().name().equals("TREASURER") ||
-                                m.getOccupation().name().equals("SECRETARY")))
-                .collect(Collectors.toList());
+        String sql = "SELECT * FROM members WHERE collectivity_id = ? " +
+                "AND occupation IN ('SENIOR', 'PRESIDENT', 'VICE_PRESIDENT', 'TREASURER', 'SECRETARY')";
+        return jdbcTemplate.query(sql, new MemberRowMapper(), collectivityId);
     }
 
     public List<Member> findSeniorsWithMinAdhesionDate(LocalDate minDate) {
-        return members.values().stream()
-                .filter(m -> m.getOccupation() != null &&
-                        (m.getOccupation().name().equals("SENIOR") ||
-                                m.getOccupation().name().equals("PRESIDENT") ||
-                                m.getOccupation().name().equals("VICE_PRESIDENT") ||
-                                m.getOccupation().name().equals("TREASURER") ||
-                                m.getOccupation().name().equals("SECRETARY")))
-                .filter(m -> m.getAdhesionDate() != null && m.getAdhesionDate().isBefore(minDate))
-                .collect(Collectors.toList());
-    }
-
-    public void deleteById(String id) {
-        members.remove(id);
+        String sql = "SELECT * FROM members WHERE adhesion_date < ? " +
+                "AND occupation IN ('SENIOR', 'PRESIDENT', 'VICE_PRESIDENT', 'TREASURER', 'SECRETARY')";
+        return jdbcTemplate.query(sql, new MemberRowMapper(), minDate);
     }
 }

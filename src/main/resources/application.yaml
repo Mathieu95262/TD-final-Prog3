@@ -1,3 +1,20 @@
 spring:
   application:
-    name: TD-final-Prog3
+    name: agricultural-federation-api
+  
+  datasource:
+    url: jdbc:postgresql://localhost:5432/federation_agricole
+    username: postgres
+    password: admin
+    driver-class-name: org.postgresql.Driver
+  
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+      data-locations: classpath:data.sql
+
+logging:
+  level:
+    org.example.tdfinalprog3: DEBUG
+    org.springframework.jdbc: DEBUG
