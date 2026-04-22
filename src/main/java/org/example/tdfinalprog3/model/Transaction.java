@@ -1,36 +1,38 @@
 package org.example.tdfinalprog3.model;
 
-
+import com.fasterxml.jackson.annotation.JsonFormat;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.example.tdfinalprog3.model.enums.PaymentMode;
+
 import java.time.LocalDate;
 import java.util.UUID;
 
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class Transaction {
     private String id;
+
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate creationDate;
+
     private double amount;
     private PaymentMode paymentMode;
     private String collectivityId;
     private String accountId;
     private String memberId;
 
-    public Transaction() {
-        this.id = UUID.randomUUID().toString();
-        this.creationDate = LocalDate.now();
+    public static Transaction fromPayment(Payment payment, String collectivityId) {
+        Transaction transaction = new Transaction();
+        transaction.id = UUID.randomUUID().toString();
+        transaction.creationDate = payment.getPaymentDate();
+        transaction.amount = payment.getAmount();
+        transaction.paymentMode = payment.getPaymentMode();
+        transaction.collectivityId = collectivityId;
+        transaction.accountId = payment.getAccountId();
+        transaction.memberId = payment.getMemberId();
+        return transaction;
     }
-
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
-    public LocalDate getCreationDate() { return creationDate; }
-    public void setCreationDate(LocalDate creationDate) { this.creationDate = creationDate; }
-    public double getAmount() { return amount; }
-    public void setAmount(double amount) { this.amount = amount; }
-    public PaymentMode getPaymentMode() { return paymentMode; }
-    public void setPaymentMode(PaymentMode paymentMode) { this.paymentMode = paymentMode; }
-    public String getCollectivityId() { return collectivityId; }
-    public void setCollectivityId(String collectivityId) { this.collectivityId = collectivityId; }
-    public String getAccountId() { return accountId; }
-    public void setAccountId(String accountId) { this.accountId = accountId; }
-    public String getMemberId() { return memberId; }
-    public void setMemberId(String memberId) { this.memberId = memberId; }
 }

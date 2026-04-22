@@ -5,6 +5,7 @@ import lombok.NoArgsConstructor;
 import org.example.tdfinalprog3.model.enums.AccountType;
 import org.example.tdfinalprog3.model.enums.Bank;
 import org.example.tdfinalprog3.model.enums.MobileBankingService;
+
 import java.util.UUID;
 
 @Data
@@ -30,13 +31,23 @@ public class FinancialAccount {
     }
 
     public void credit(double amount) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("Le montant doit être positif");
+        }
         this.balance += amount;
     }
 
     public void debit(double amount) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("Le montant doit être positif");
+        }
         if (this.balance < amount) {
-            throw new RuntimeException("Insufficient funds in account " + this.id);
+            throw new IllegalStateException("Solde insuffisant dans le compte " + this.id);
         }
         this.balance -= amount;
+    }
+
+    public boolean hasEnoughMoney(double amount) {
+        return this.balance >= amount;
     }
 }

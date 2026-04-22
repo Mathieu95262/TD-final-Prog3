@@ -1,10 +1,12 @@
 package org.example.tdfinalprog3.model;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.example.tdfinalprog3.model.enums.Frequency;
 import org.example.tdfinalprog3.model.enums.ActivityStatus;
+
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -13,22 +15,26 @@ import java.util.UUID;
 @AllArgsConstructor
 public class MembershipFee {
     private String id;
+
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate eligibleFrom;
+
     private Frequency frequency;
     private double amount;
     private String label;
     private ActivityStatus status;
     private String collectivityId;
 
-    public static MembershipFee fromCreateRequest(CreateMembershipFeeRequest request, String collectivityId) {
+    public static MembershipFee create(String collectivityId, LocalDate eligibleFrom,
+                                       Frequency frequency, double amount, String label) {
         MembershipFee fee = new MembershipFee();
-        fee.setId(UUID.randomUUID().toString());
-        fee.setEligibleFrom(request.getEligibleFrom());
-        fee.setFrequency(request.getFrequency());
-        fee.setAmount(request.getAmount());
-        fee.setLabel(request.getLabel());
-        fee.setStatus(ActivityStatus.ACTIVE);
-        fee.setCollectivityId(collectivityId);
+        fee.id = UUID.randomUUID().toString();
+        fee.collectivityId = collectivityId;
+        fee.eligibleFrom = eligibleFrom;
+        fee.frequency = frequency;
+        fee.amount = amount;
+        fee.label = label;
+        fee.status = ActivityStatus.ACTIVE;
         return fee;
     }
 }

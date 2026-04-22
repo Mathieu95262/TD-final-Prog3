@@ -5,10 +5,12 @@ import org.example.tdfinalprog3.model.enums.PaymentMode;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
+
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public class PaymentRepository {
@@ -34,14 +36,35 @@ public class PaymentRepository {
         return payment;
     }
 
+    public List<Payment> saveAll(List<Payment> payments) {
+        for (Payment payment : payments) {
+            save(payment);
+        }
+        return payments;
+    }
+
+    public Optional<Payment> findById(String id) {
+        String sql = "SELECT * FROM payments WHERE id = ?";
+        List<Payment> payments = jdbcTemplate.query(sql, new PaymentRowMapper(), id);
+        return payments.isEmpty() ? Optional.empty() : Optional.of(payments.get(0));
+    }
+
     public List<Payment> findByMemberId(String memberId) {
-        String sql = "SELECT * FROM payments WHERE member_id = ?";
+        String sql = "SELECT * FROM payments WHERE member_id = ? ORDER BY payment_date DESC";
         return jdbcTemplate.query(sql, new PaymentRowMapper(), memberId);
     }
 
     public List<Payment> findByAccountIdAndDateBetween(String accountId, LocalDate from, LocalDate to) {
-        String sql = "SELECT * FROM payments WHERE account_id = ? AND payment_date BETWEEN ? AND ?";
+        String sql = "SELECT * FROM payments WHERE account_id = ? AND payment_date BETWEEN ? AND ? ORDER BY payment_date DESC";
         return jdbcTemplate.query(sql, new PaymentRowMapper(), accountId, from, to);
+    }
+
+    public List<Payment> findByCollectivityIdAndDateBetween(String collectivityId, LocalDate from, LocalDate to) {
+        String sql = "SELECT p.* FROM payments p " +
+                "JOIN financial_accounts fa ON p.account_id = fa.id " +
+                "WHERE fa.collectivity_id = ? AND p.payment_date BETWEEN ? AND ? " +
+                "ORDER BY p.payment_date DESC";
+        return jdbcTemplate.query(sql, new PaymentRowMapper(), collectivityId, from, to);
     }
 
     private static class PaymentRowMapper implements RowMapper<Payment> {
@@ -54,7 +77,8 @@ public class PaymentRepository {
             payment.setMemberId(rs.getString("member_id"));
             payment.setMembershipFeeId(rs.getString("membership_fee_id"));
             payment.setAccountId(rs.getString("account_id"));
-            payment.setPaymentDate(rs.getDate("payment_date") != null ? rs.getDate("payment_date").toLocalDate() : null);
+            payment.setPaymentDate(rs.getDate("payment_date") != null ?
+                    rs.getDate("payment_date").toLocalDate() : null);
             return payment;
         }
     }

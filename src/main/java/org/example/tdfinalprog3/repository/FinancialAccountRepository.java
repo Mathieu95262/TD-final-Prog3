@@ -7,6 +7,7 @@ import org.example.tdfinalprog3.model.enums.MobileBankingService;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
+
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
@@ -22,14 +23,14 @@ public class FinancialAccountRepository {
     }
 
     public FinancialAccount save(FinancialAccount account) {
-        String sql = "INSERT INTO financial_accounts (id, account_type, holder_name, bank_name, bank_code, branch_code, " +
-                "account_number, account_key, mobile_service, phone_number, balance, collectivity_id) " +
+        String sql = "INSERT INTO financial_accounts (id, account_type, holder_name, bank_name, bank_code, " +
+                "branch_code, account_number, account_key, mobile_service, phone_number, balance, collectivity_id) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
                 "ON CONFLICT (id) DO UPDATE SET " +
                 "balance = EXCLUDED.balance";
         jdbcTemplate.update(sql,
                 account.getId(),
-                account.getAccountType().name(),
+                account.getAccountType() != null ? account.getAccountType().name() : null,
                 account.getHolderName(),
                 account.getBankName() != null ? account.getBankName().name() : null,
                 account.getBankCode(),
@@ -55,21 +56,40 @@ public class FinancialAccountRepository {
         return jdbcTemplate.query(sql, new FinancialAccountRowMapper(), collectivityId);
     }
 
+    public boolean existsById(String id) {
+        String sql = "SELECT COUNT(*) FROM financial_accounts WHERE id = ?";
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, id);
+        return count != null && count > 0;
+    }
+
     private static class FinancialAccountRowMapper implements RowMapper<FinancialAccount> {
         @Override
         public FinancialAccount mapRow(ResultSet rs, int rowNum) throws SQLException {
             FinancialAccount account = new FinancialAccount();
             account.setId(rs.getString("id"));
-            account.setAccountType(AccountType.valueOf(rs.getString("account_type")));
+
+            String accountTypeStr = rs.getString("account_type");
+            if (accountTypeStr != null) {
+                account.setAccountType(AccountType.valueOf(accountTypeStr));
+            }
+
             account.setHolderName(rs.getString("holder_name"));
-            String bankName = rs.getString("bank_name");
-            if (bankName != null) account.setBankName(Bank.valueOf(bankName));
+
+            String bankNameStr = rs.getString("bank_name");
+            if (bankNameStr != null) {
+                account.setBankName(Bank.valueOf(bankNameStr));
+            }
+
             account.setBankCode(rs.getString("bank_code"));
             account.setBranchCode(rs.getString("branch_code"));
             account.setAccountNumber(rs.getString("account_number"));
             account.setAccountKey(rs.getString("account_key"));
-            String mobileService = rs.getString("mobile_service");
-            if (mobileService != null) account.setMobileService(MobileBankingService.valueOf(mobileService));
+
+            String mobileServiceStr = rs.getString("mobile_service");
+            if (mobileServiceStr != null) {
+                account.setMobileService(MobileBankingService.valueOf(mobileServiceStr));
+            }
+
             account.setPhoneNumber(rs.getString("phone_number"));
             account.setBalance(rs.getDouble("balance"));
             account.setCollectivityId(rs.getString("collectivity_id"));
