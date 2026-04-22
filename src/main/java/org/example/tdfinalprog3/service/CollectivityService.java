@@ -23,10 +23,6 @@ public class CollectivityService {
         this.memberRepository = memberRepository;
     }
 
-    // =========================================================
-    // A - Création de collectivités
-    // =========================================================
-
     public List<Collectivity> createCollectivities(List<CreateCollectivityRequest> requests) {
         List<Collectivity> responses = new ArrayList<>();
 
@@ -67,10 +63,6 @@ public class CollectivityService {
         return responses;
     }
 
-    // =========================================================
-    // J - Attribution d'un numéro et d'un nom à une collectivité
-    // =========================================================
-
     public Collectivity assignIdentity(String collectivityId, AssignCollectivityIdentityRequest request) {
         // 1. Vérifier que la collectivité existe
         Collectivity collectivity = collectivityRepository.findById(collectivityId)
@@ -108,10 +100,6 @@ public class CollectivityService {
         // 4. Persister et retourner
         return collectivityRepository.save(collectivity);
     }
-
-    // =========================================================
-    // Méthodes supplémentaires pour le contrôleur
-    // =========================================================
 
     public List<Collectivity> getAllCollectivities() {
         return collectivityRepository.findAll();
@@ -176,10 +164,6 @@ public class CollectivityService {
                             + seniorCount + ").");
         }
     }
-
-    // =========================================================
-    // Mapping
-    // =========================================================
 
     private Collectivity mapToEntity(CreateCollectivityRequest request) {
         Collectivity collectivity = new Collectivity();

@@ -42,7 +42,6 @@ public class Member {
         this.membershipDuesPaid = false;
     }
 
-    // ========== Getters et Setters existants ==========
 
     public String getId() {
         return id;

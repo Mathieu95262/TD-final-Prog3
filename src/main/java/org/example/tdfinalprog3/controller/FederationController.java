@@ -20,20 +20,12 @@ public class FederationController {
         this.memberService = memberService;
     }
 
-    // -------------------------------------------------------
-    // A - Création de collectivités
-    // -------------------------------------------------------
-
     @PostMapping("/collectivities")
     public ResponseEntity<List<Collectivity>> createCollectivities(
             @RequestBody List<CreateCollectivityRequest> requests) {
         List<Collectivity> created = collectivityService.createCollectivities(requests);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
-
-    // -------------------------------------------------------
-    // J - Attribution d'un numéro et d'un nom à une collectivité
-    // -------------------------------------------------------
 
     @PatchMapping("/collectivities/{id}/identity")
     public ResponseEntity<Collectivity> assignIdentity(

@@ -1,4 +1,3 @@
-// CreateCollectivityRequest.java
 package org.example.tdfinalprog3.model;
 
 import java.util.List;
