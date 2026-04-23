@@ -1,0 +1,1053 @@
+openapi: 3.0.3
+info:
+  title: Federation de Collectivites Agricoles API
+  description: |
+    API REST - PROG3 TD Final
+    - **A** : Ouverture d'une nouvelle collectivite
+    - **B-2** : Admission d'un nouveau membre (conditions renforcees)
+    - **J** : Attribution d'un numero et d'un nom unique a une collectivite
+    - **C** : Cotisations et paiements
+    - **D** : Situation de tresorerie (comptes)
+  version: 0.0.3
+
+servers:
+  - url: http://localhost:8080
+    description: Serveur local
+
+tags:
+  - name: Collectivites
+  - name: Membres
+  - name: Cotisations
+  - name: Paiements
+  - name: Comptes
+
+paths:
+
+  # ── A : Collectivites ──────────────────────────────────────────────────────
+
+  /collectivities:
+    post:
+      tags: [Collectivites]
+      summary: "A - Creer une nouvelle collectivite"
+      description: |
+        Conditions obligatoires :
+        - Au moins 10 membres
+        - Dont 5 avec >= 6 mois d'anciennete dans la federation
+        - President, president adjoint, tresorier et secretaire obligatoires
+        - Numero et nom attribues separement via PATCH /collectivities/{id}/identity
+      operationId: creerCollectivite
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCollectiviteRequest'
+      responses:
+        '201':
+          description: Collectivite creee
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectiviteResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/BusinessError'
+
+    get:
+      tags: [Collectivites]
+      summary: Lister toutes les collectivites
+      operationId: getAllCollectivites
+      responses:
+        '200':
+          description: Liste des collectivites
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CollectiviteResponse'
+
+  /collectivities/{id}:
+    get:
+      tags: [Collectivites]
+      summary: Recuperer une collectivite par ID
+      operationId: getCollectivite
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Collectivite trouvee
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectiviteResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /collectivities/{id}/identity:
+    patch:
+      tags: [Collectivites]
+      summary: "J - Attribuer numero et nom unique a une collectivite"
+      description: |
+        Une fois le numero ou le nom attribue, il ne peut plus etre modifie.
+        Toute tentative de modification retourne 409 Conflict.
+      operationId: assignerIdentite
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignIdentityRequest'
+      responses:
+        '200':
+          description: Identite attribuee
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectiviteResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  # ── B-2 : Membres ──────────────────────────────────────────────────────────
+
+  /members:
+    post:
+      tags: [Membres]
+      summary: "B-2 - Admettre un nouveau membre"
+      description: |
+        Nouvelles conditions d'admission :
+        1. Au moins 2 parrains confirmes (anciennete > 90 jours)
+        2. Parrains de la collectivite cible >= parrains exterieurs
+        3. Montant = 50 000 MGA (frais adhesion) + cotisations annuelles de la collectivite
+        4. Mode de paiement : VIREMENT_BANCAIRE ou MOBILE_MONEY uniquement
+        5. Nature de la relation avec chaque parrain obligatoire
+      operationId: admettreMembre
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMembreRequest'
+      responses:
+        '201':
+          description: Membre admis (poste MEMBRE_JUNIOR attribue automatiquement)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MembreResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/BusinessError'
+
+  /members/{id}:
+    get:
+      tags: [Membres]
+      summary: Recuperer un membre par ID
+      operationId: getMembre
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Membre trouve
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MembreResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /collectivities/{collectiviteId}/members:
+    get:
+      tags: [Membres]
+      summary: Lister les membres d'une collectivite
+      operationId: getMembresByCollectivite
+      parameters:
+        - name: collectiviteId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Liste des membres
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MembreResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /members/{membreId}/paiements:
+    get:
+      tags: [Paiements]
+      summary: Historique des paiements d'un membre
+      operationId: getPaiementsMembre
+      parameters:
+        - name: membreId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Liste des paiements
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PaiementResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── C : Cotisations & Paiements ────────────────────────────────────────────
+
+  /collectivities/{collectiviteId}/cotisations:
+    post:
+      tags: [Cotisations]
+      summary: "C - Creer une cotisation pour une collectivite"
+      description: |
+        Les cotisations peuvent etre MENSUELLE, ANNUELLE ou PONCTUELLE.
+      operationId: creerCotisation
+      parameters:
+        - name: collectiviteId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCotisationRequest'
+      responses:
+        '201':
+          description: Cotisation creee
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CotisationResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    get:
+      tags: [Cotisations]
+      summary: Lister les cotisations d'une collectivite
+      operationId: getCotisations
+      parameters:
+        - name: collectiviteId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Liste des cotisations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CotisationResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /collectivities/{collectiviteId}/cotisations/{cotisationId}:
+    get:
+      tags: [Cotisations]
+      summary: Recuperer une cotisation par ID
+      operationId: getCotisation
+      parameters:
+        - name: collectiviteId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: cotisationId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Cotisation trouvee
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CotisationResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /collectivities/{collectiviteId}/cotisations/{cotisationId}/toggle-status:
+    patch:
+      tags: [Cotisations]
+      summary: Activer ou desactiver une cotisation
+      operationId: toggleCotisationStatus
+      parameters:
+        - name: collectiviteId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: cotisationId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Statut mis a jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CotisationResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /collectivities/{collectiviteId}/paiements:
+    post:
+      tags: [Paiements]
+      summary: "C - Enregistrer un encaissement (le tresorier)"
+      description: |
+        Le tresorier enregistre un paiement d'un membre pour une cotisation.
+        Trace : montant, date d'encaissement, mode de paiement (ESPECE, VIREMENT_BANCAIRE, MOBILE_MONEY).
+      operationId: enregistrerPaiement
+      parameters:
+        - name: collectiviteId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePaiementRequest'
+      responses:
+        '201':
+          description: Paiement enregistre
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaiementResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/BusinessError'
+
+    get:
+      tags: [Paiements]
+      summary: "C - Paiements d'une collectivite sur une periode"
+      operationId: getPaiements
+      parameters:
+        - name: collectiviteId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: debut
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          example: "2026-01-01"
+        - name: fin
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          example: "2026-12-31"
+      responses:
+        '200':
+          description: Liste des paiements
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PaiementResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/BusinessError'
+
+  # ── D : Comptes (Collectivites) ────────────────────────────────────────────
+
+  /collectivities/{collectiviteId}/comptes/caisse:
+    post:
+      tags: [Comptes]
+      summary: "D - Creer la caisse d'une collectivite (une seule autorisee)"
+      operationId: creerCaisseCollectivite
+      parameters:
+        - name: collectiviteId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCaisseRequest'
+      responses:
+        '201':
+          description: Caisse creee
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompteResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /collectivities/{collectiviteId}/comptes/bancaire:
+    post:
+      tags: [Comptes]
+      summary: "D - Creer un compte bancaire pour une collectivite"
+      operationId: creerCompteBancaireCollectivite
+      parameters:
+        - name: collectiviteId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCompteBancaireRequest'
+      responses:
+        '201':
+          description: Compte bancaire cree
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompteResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /collectivities/{collectiviteId}/comptes/mobile-money:
+    post:
+      tags: [Comptes]
+      summary: "D - Creer un compte mobile money pour une collectivite"
+      operationId: creerCompteMobileMoneyCollectivite
+      parameters:
+        - name: collectiviteId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCompteMobileMoneyRequest'
+      responses:
+        '201':
+          description: Compte mobile money cree
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompteResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /collectivities/{collectiviteId}/comptes:
+    get:
+      tags: [Comptes]
+      summary: Lister les comptes d'une collectivite
+      operationId: getComptesCollectivite
+      parameters:
+        - name: collectiviteId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Liste des comptes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CompteResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── D : Comptes (Federation) ───────────────────────────────────────────────
+
+  /federation/comptes/caisse:
+    post:
+      tags: [Comptes]
+      summary: "D - Creer la caisse de la federation (une seule autorisee)"
+      operationId: creerCaisseFederation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCaisseRequest'
+      responses:
+        '201':
+          description: Caisse creee
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompteResponse'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /federation/comptes/bancaire:
+    post:
+      tags: [Comptes]
+      summary: "D - Creer un compte bancaire pour la federation"
+      operationId: creerCompteBancaireFederation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCompteBancaireRequest'
+      responses:
+        '201':
+          description: Compte bancaire cree
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompteResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /federation/comptes/mobile-money:
+    post:
+      tags: [Comptes]
+      summary: "D - Creer un compte mobile money pour la federation"
+      operationId: creerCompteMobileMoneyFederation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCompteMobileMoneyRequest'
+      responses:
+        '201':
+          description: Compte mobile money cree
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompteResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /federation/comptes:
+    get:
+      tags: [Comptes]
+      summary: Lister les comptes de la federation
+      operationId: getComptesFederation
+      responses:
+        '200':
+          description: Liste des comptes de la federation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CompteResponse'
+
+  /comptes/{id}:
+    get:
+      tags: [Comptes]
+      summary: Recuperer un compte par ID
+      operationId: getCompte
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Compte trouve
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompteResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+# ── Components ─────────────────────────────────────────────────────────────────
+
+components:
+  parameters:
+    IdPath:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+
+  responses:
+    NotFound:
+      description: Ressource introuvable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Conflict:
+      description: Conflit - ressource deja existante ou valeur immuable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    BusinessError:
+      description: Regle metier non respectee
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ValidationError:
+      description: Donnees invalides
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationErrorResponse'
+
+  schemas:
+
+    # ── Requetes ───────────────────────────────────────────────────────────────
+
+    CreateCollectiviteRequest:
+      type: object
+      required: [ville, specialiteAgricole, cotisationAnnuelleObligatoire, membres]
+      properties:
+        ville:
+          type: string
+          example: "Antananarivo"
+        specialiteAgricole:
+          type: string
+          example: "Riziculture"
+        cotisationAnnuelleObligatoire:
+          type: integer
+          format: int64
+          example: 200000
+        membres:
+          type: array
+          minItems: 10
+          items:
+            $ref: '#/components/schemas/MembreFondateurRequest'
+
+    MembreFondateurRequest:
+      type: object
+      required: [nom, prenom, dateNaissance, genre, adresse, metier, telephone, email, poste, dateAdhesionFederation]
+      properties:
+        nom:
+          type: string
+        prenom:
+          type: string
+        dateNaissance:
+          type: string
+          format: date
+        genre:
+          $ref: '#/components/schemas/Genre'
+        adresse:
+          type: string
+        metier:
+          type: string
+        telephone:
+          type: string
+        email:
+          type: string
+          format: email
+        poste:
+          $ref: '#/components/schemas/Poste'
+        dateAdhesionFederation:
+          type: string
+          format: date
+          description: Date d'adhesion dans la federation (pour valider les 6 mois)
+
+    AssignIdentityRequest:
+      type: object
+      required: [numero, nom]
+      properties:
+        numero:
+          type: string
+          description: Numero unique attribue par la federation (immuable)
+          example: "COL-001"
+        nom:
+          type: string
+          description: Nom unique attribue par la federation (immuable)
+          example: "Collectivite Verte d'Antananarivo"
+
+    CreateMembreRequest:
+      type: object
+      required: [collectiviteId, nom, prenom, dateNaissance, genre, adresse, metier, telephone, email, parrains, montantPaye, modePaiement]
+      properties:
+        collectiviteId:
+          type: integer
+          format: int64
+        nom:
+          type: string
+        prenom:
+          type: string
+        dateNaissance:
+          type: string
+          format: date
+        genre:
+          $ref: '#/components/schemas/Genre'
+        adresse:
+          type: string
+        metier:
+          type: string
+        telephone:
+          type: string
+        email:
+          type: string
+          format: email
+        parrains:
+          type: array
+          minItems: 2
+          items:
+            $ref: '#/components/schemas/ParrainRequest'
+        montantPaye:
+          type: integer
+          format: int64
+          description: "50 000 MGA frais adhesion + cotisations annuelles de la collectivite"
+          example: 250000
+        modePaiement:
+          type: string
+          enum: [VIREMENT_BANCAIRE, MOBILE_MONEY]
+
+    ParrainRequest:
+      type: object
+      required: [parrainId, relation]
+      properties:
+        parrainId:
+          type: integer
+          format: int64
+        relation:
+          type: string
+          description: Nature de la relation (famille, ami, collegue, etc.)
+          example: "famille"
+
+    CreateCotisationRequest:
+      type: object
+      required: [typeCotisation, montant]
+      properties:
+        typeCotisation:
+          $ref: '#/components/schemas/TypeCotisation'
+        montant:
+          type: integer
+          format: int64
+          example: 20000
+        description:
+          type: string
+
+    CreatePaiementRequest:
+      type: object
+      required: [membreId, cotisationId, montant, dateEncaissement, modePaiement]
+      properties:
+        membreId:
+          type: integer
+          format: int64
+        cotisationId:
+          type: integer
+          format: int64
+        montant:
+          type: integer
+          format: int64
+        dateEncaissement:
+          type: string
+          format: date
+        modePaiement:
+          $ref: '#/components/schemas/ModePaiement'
+
+    CreateCaisseRequest:
+      type: object
+      required: [nomTitulaire]
+      properties:
+        nomTitulaire:
+          type: string
+          example: "Caisse principale"
+
+    CreateCompteBancaireRequest:
+      type: object
+      required: [nomTitulaire, nomBanque, numeroRib]
+      properties:
+        nomTitulaire:
+          type: string
+        nomBanque:
+          $ref: '#/components/schemas/NomBanque'
+        numeroRib:
+          type: string
+          pattern: '^\d{23}$'
+          description: "Format : BBBBBGGGGGCCCCCCCCCCCКК (23 chiffres)"
+          example: "00005000000012345678901"
+
+    CreateCompteMobileMoneyRequest:
+      type: object
+      required: [nomTitulaire, serviceMobileMoney, numeroTelephone]
+      properties:
+        nomTitulaire:
+          type: string
+        serviceMobileMoney:
+          $ref: '#/components/schemas/ServiceMobileMoney'
+        numeroTelephone:
+          type: string
+          example: "034 00 000 00"
+
+    # ── Reponses ───────────────────────────────────────────────────────────────
+
+    CollectiviteResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        numero:
+          type: string
+          nullable: true
+          description: "Null jusqu'a l'attribution via PATCH /identity"
+        nom:
+          type: string
+          nullable: true
+        ville:
+          type: string
+        specialiteAgricole:
+          type: string
+        dateCreation:
+          type: string
+          format: date
+        cotisationAnnuelleObligatoire:
+          type: integer
+          format: int64
+        nombreMembresActifs:
+          type: integer
+          format: int64
+
+    MembreResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        nom:
+          type: string
+        prenom:
+          type: string
+        dateNaissance:
+          type: string
+          format: date
+        genre:
+          $ref: '#/components/schemas/Genre'
+        adresse:
+          type: string
+        metier:
+          type: string
+        telephone:
+          type: string
+        email:
+          type: string
+        dateAdhesion:
+          type: string
+          format: date
+        poste:
+          $ref: '#/components/schemas/Poste'
+        actif:
+          type: boolean
+        collectiviteId:
+          type: integer
+          format: int64
+        collectiviteNom:
+          type: string
+          nullable: true
+
+    CotisationResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        typeCotisation:
+          $ref: '#/components/schemas/TypeCotisation'
+        montant:
+          type: integer
+          format: int64
+        description:
+          type: string
+        active:
+          type: boolean
+        collectiviteId:
+          type: integer
+          format: int64
+        collectiviteNom:
+          type: string
+          nullable: true
+
+    PaiementResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        montant:
+          type: integer
+          format: int64
+        dateEncaissement:
+          type: string
+          format: date
+        modePaiement:
+          $ref: '#/components/schemas/ModePaiement'
+        membreId:
+          type: integer
+          format: int64
+        membreNomPrenom:
+          type: string
+        cotisationId:
+          type: integer
+          format: int64
+        cotisationDescription:
+          type: string
+          nullable: true
+
+    CompteResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        typeCompte:
+          $ref: '#/components/schemas/TypeCompte'
+        nomTitulaire:
+          type: string
+        solde:
+          type: integer
+          format: int64
+          description: "Solde en MGA"
+        dateSolde:
+          type: string
+          format: date
+        collectiviteId:
+          type: integer
+          format: int64
+          nullable: true
+        appartientFederation:
+          type: boolean
+        nomBanque:
+          $ref: '#/components/schemas/NomBanque'
+          nullable: true
+        numeroRib:
+          type: string
+          nullable: true
+        serviceMobileMoney:
+          $ref: '#/components/schemas/ServiceMobileMoney'
+          nullable: true
+        numeroTelephone:
+          type: string
+          nullable: true
+
+    ErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+        message:
+          type: string
+
+    ValidationErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+          example: 400
+        errors:
+          type: array
+          items:
+            type: string
+
+    # ── Enumerations ───────────────────────────────────────────────────────────
+
+    Genre:
+      type: string
+      enum: [MASCULIN, FEMININ]
+
+    Poste:
+      type: string
+      enum: [PRESIDENT, PRESIDENT_ADJOINT, TRESORIER, SECRETAIRE, MEMBRE_CONFIRME, MEMBRE_JUNIOR]
+
+    TypeCotisation:
+      type: string
+      enum: [MENSUELLE, ANNUELLE, PONCTUELLE]
+
+    ModePaiement:
+      type: string
+      enum: [ESPECE, VIREMENT_BANCAIRE, MOBILE_MONEY]
+
+    TypeCompte:
+      type: string
+      enum: [CAISSE, BANCAIRE, MOBILE_MONEY]
+
+    NomBanque:
+      type: string
+      enum: [BRED, MCB, BMOI, BOA, BGFI, AFG, ACCES_BANQUE, BAOBAB, SIPEM]
+
+    ServiceMobileMoney:
+      type: string
+      enum: [ORANGE_MONEY, MVOLA, AIRTEL_MONEY]
