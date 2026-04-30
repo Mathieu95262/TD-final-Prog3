@@ -4,7 +4,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.time.LocalDate;
-import java.util.List;
+import java.util.Collection;
 
 @Data
 @Builder
@@ -18,5 +18,5 @@ public class CollectiviteResponse {
     private boolean autorisationOuverture;
     private Long cotisationAnnuelleObligatoire;
     private long nombreMembres;
-    private List<MembreResponse> members;
+    private Collection<MembreResponse> members;
 }

@@ -4,8 +4,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import mg.prog3.federation.dto.request.AssignInformationsRequest;
 import mg.prog3.federation.dto.request.CreateCollectiviteRequest;
+import mg.prog3.federation.dto.request.CreateCotisationRequest;
 import mg.prog3.federation.dto.response.CollectiviteResponse;
 import mg.prog3.federation.dto.response.CompteAvecSoldeResponse;
+import mg.prog3.federation.dto.response.CotisationResponse;
 import mg.prog3.federation.dto.response.PaiementResponse;
 import mg.prog3.federation.service.CollectiviteService;
 import mg.prog3.federation.service.CompteService;
@@ -16,7 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.List;
+import java.util.Collection;
 
 @RestController
 @RequestMapping("/collectivities")
@@ -24,18 +26,18 @@ import java.util.List;
 public class CollectiviteController {
 
     private final CollectiviteService collectiviteService;
-    private final CompteService compteService;
     private final CotisationService cotisationService;
+    private final CompteService compteService;
 
     @PostMapping
-    public ResponseEntity<List<CollectiviteResponse>> creerCollectivites(
-            @Valid @RequestBody List<CreateCollectiviteRequest> requests) {
+    public ResponseEntity<Collection<CollectiviteResponse>> creerCollectivites(
+            @Valid @RequestBody Collection<CreateCollectiviteRequest> requests) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(collectiviteService.creerCollectivites(requests));
     }
 
     @GetMapping
-    public ResponseEntity<List<CollectiviteResponse>> getAllCollectivites() {
+    public ResponseEntity<Collection<CollectiviteResponse>> getAllCollectivites() {
         return ResponseEntity.ok(collectiviteService.getAllCollectivites());
     }
 
@@ -51,8 +53,24 @@ public class CollectiviteController {
         return ResponseEntity.ok(collectiviteService.assignerInformations(id, request));
     }
 
+    @PostMapping("/{id}/membershipFees")
+    public ResponseEntity<Collection<CotisationResponse>> creerCotisations(
+            @PathVariable Long id,
+            @Valid @RequestBody Collection<CreateCotisationRequest> requests) {
+        Collection<CotisationResponse> responses = requests.stream()
+                .map(req -> cotisationService.creerCotisation(id, req))
+                .toList();
+        return ResponseEntity.status(HttpStatus.CREATED).body(responses);
+    }
+
+    @GetMapping("/{id}/membershipFees")
+    public ResponseEntity<Collection<CotisationResponse>> getCotisations(
+            @PathVariable Long id) {
+        return ResponseEntity.ok(cotisationService.getCotisationsByCollectivite(id));
+    }
+
     @GetMapping("/{id}/transactions")
-    public ResponseEntity<List<PaiementResponse>> getTransactions(
+    public ResponseEntity<Collection<PaiementResponse>> getTransactions(
             @PathVariable Long id,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
@@ -60,7 +78,7 @@ public class CollectiviteController {
     }
 
     @GetMapping("/{id}/financialAccounts")
-    public ResponseEntity<List<CompteAvecSoldeResponse>> getFinancialAccounts(
+    public ResponseEntity<Collection<CompteAvecSoldeResponse>> getFinancialAccounts(
             @PathVariable Long id,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate at) {
         return ResponseEntity.ok(compteService.getFinancialAccounts(id, at));

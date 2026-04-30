@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
-import java.util.List;
+import java.util.Collection;
 
 @Data
 public class CreateCollectiviteRequest {
@@ -20,7 +20,7 @@ public class CreateCollectiviteRequest {
     @NotNull(message = "Member list is required")
     @Size(min = 10, message = "A collectivite must have at least 10 members")
     @Valid
-    private List<MembreCollectiviteRequest> membres;
+    private Collection<MembreCollectiviteRequest> membres;
 
     @NotNull(message = "Annual membership fee amount is required")
     private Long cotisationAnnuelleObligatoire;

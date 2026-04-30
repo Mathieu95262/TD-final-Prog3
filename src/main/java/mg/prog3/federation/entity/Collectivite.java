@@ -4,10 +4,10 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
-import java.util.List;
+import java.util.Collection;
 
 @Entity
-@Table(name = "collectivites")
+@Table(name = "collectivities")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -41,5 +41,5 @@ public class Collectivite {
     private Long cotisationAnnuelleObligatoire;
 
     @OneToMany(mappedBy = "collectivite", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Membre> membres;
+    private Collection<Membre> membres;
 }

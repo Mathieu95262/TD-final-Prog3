@@ -8,7 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
-import java.util.List;
+import java.util.Collection;
 import java.util.Optional;
 
 @Repository
@@ -18,9 +18,9 @@ public interface MembreRepository extends JpaRepository<Membre, Long> {
 
     Optional<Membre> findByEmail(String email);
 
-    List<Membre> findByCollectiviteId(Long collectiviteId);
+    Collection<Membre> findByCollectiviteId(Long collectiviteId);
 
-    List<Membre> findByCollectiviteIdAndPoste(Long collectiviteId, Poste poste);
+    Collection<Membre> findByCollectiviteIdAndPoste(Long collectiviteId, Poste poste);
 
     @Query("SELECT COUNT(m) FROM Membre m WHERE m.collectivite.id = :collectiviteId AND m.dateAdhesion <= :dateSeuil AND m.actif = true")
     long countMembresAvecAnciennete(@Param("collectiviteId") Long collectiviteId, @Param("dateSeuil") LocalDate dateSeuil);

@@ -12,12 +12,12 @@ import mg.prog3.federation.exception.ConflictException;
 import mg.prog3.federation.exception.ResourceNotFoundException;
 import mg.prog3.federation.repository.CollectiviteRepository;
 import mg.prog3.federation.repository.CompteRepository;
-import mg.prog3.federation.repository.PaiementRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.List;
+import java.util.Collection;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -25,7 +25,13 @@ public class CompteService {
 
     private final CompteRepository compteRepository;
     private final CollectiviteRepository collectiviteRepository;
-    private final PaiementRepository paiementRepository;
+
+    private static final Set<String> ALLOWED_BANKS = Set.of(
+            "BRED", "MCB", "BMOI", "BOA", "BGFI",
+            "AFG", "ACCES_BANQUE", "BAOBAB", "SIPEM");
+
+    private static final Set<String> ALLOWED_MOBILE_SERVICES = Set.of(
+            "Orange Money", "Mvola", "Airtel Money");
 
     @Transactional
     public CompteResponse creerCaisseCollectivite(Long collectiviteId, String nomTitulaire) {
@@ -144,7 +150,7 @@ public class CompteService {
     }
 
     @Transactional(readOnly = true)
-    public List<CompteAvecSoldeResponse> getFinancialAccounts(Long collectiviteId, LocalDate at) {
+    public Collection<CompteAvecSoldeResponse> getFinancialAccounts(Long collectiviteId, LocalDate at) {
         findCollectivite(collectiviteId);
         return compteRepository.findByCollectiviteId(collectiviteId).stream()
                 .filter(c -> !c.getDateSolde().isAfter(at))
@@ -153,14 +159,14 @@ public class CompteService {
     }
 
     @Transactional(readOnly = true)
-    public List<CompteResponse> getComptesByCollectivite(Long collectiviteId) {
+    public Collection<CompteResponse> getComptesByCollectivite(Long collectiviteId) {
         findCollectivite(collectiviteId);
         return compteRepository.findByCollectiviteId(collectiviteId)
                 .stream().map(this::toResponse).toList();
     }
 
     @Transactional(readOnly = true)
-    public List<CompteResponse> getComptesFederation() {
+    public Collection<CompteResponse> getComptesFederation() {
         return compteRepository.findByAppartientFederationTrue()
                 .stream().map(this::toResponse).toList();
     }
@@ -171,20 +177,16 @@ public class CompteService {
     }
 
     private void validateBankName(String bankName) {
-        List<String> allowedBanks = List.of(
-                "BRED", "MCB", "BMOI", "BOA", "BGFI",
-                "AFG", "ACCES_BANQUE", "BAOBAB", "SIPEM");
-        if (!allowedBanks.contains(bankName)) {
+        if (!ALLOWED_BANKS.contains(bankName)) {
             throw new BusinessException(
-                    "Unrecognized bank: " + bankName + ". Allowed: " + allowedBanks);
+                    "Unrecognized bank: " + bankName + ". Allowed: " + ALLOWED_BANKS);
         }
     }
 
     private void validateMobileMoneyService(String service) {
-        List<String> allowedServices = List.of("Orange Money", "Mvola", "Airtel Money");
-        if (!allowedServices.contains(service)) {
+        if (!ALLOWED_MOBILE_SERVICES.contains(service)) {
             throw new BusinessException(
-                    "Unrecognized mobile money service: " + service + ". Allowed: " + allowedServices);
+                    "Unrecognized mobile money service: " + service + ". Allowed: " + ALLOWED_MOBILE_SERVICES);
         }
     }
 
@@ -222,10 +224,10 @@ public class CompteService {
 
         if (c instanceof CompteBancaire cb) {
             builder.nomBanque(cb.getNomBanque())
-                   .numeroCompteBancaire(cb.getNumeroCompteBancaire());
+                    .numeroCompteBancaire(cb.getNumeroCompteBancaire());
         } else if (c instanceof CompteMobileMoney cm) {
             builder.serviceMobileMoney(cm.getServiceMobileMoney())
-                   .numeroTelephone(cm.getNumeroTelephone());
+                    .numeroTelephone(cm.getNumeroTelephone());
         }
         return builder.build();
     }
@@ -240,10 +242,10 @@ public class CompteService {
 
         if (c instanceof CompteBancaire cb) {
             b.nomBanque(cb.getNomBanque())
-             .numeroCompteBancaire(cb.getNumeroCompteBancaire());
+                    .numeroCompteBancaire(cb.getNumeroCompteBancaire());
         } else if (c instanceof CompteMobileMoney cm) {
             b.serviceMobileMoney(cm.getServiceMobileMoney())
-             .numeroTelephone(cm.getNumeroTelephone());
+                    .numeroTelephone(cm.getNumeroTelephone());
         }
         return b.build();
     }

@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import mg.prog3.federation.enums.TypeCotisation;
 
-import java.util.List;
+import java.util.Collection;
 
 @Entity
 @Table(name = "cotisations")
@@ -34,5 +34,5 @@ public class Cotisation {
     private Collectivite collectivite;
 
     @OneToMany(mappedBy = "cotisation", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Paiement> paiements;
+    private Collection<Paiement> paiements;
 }

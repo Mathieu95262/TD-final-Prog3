@@ -5,10 +5,10 @@ import mg.prog3.federation.enums.TypeCotisation;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
+import java.util.Collection;
 
 @Repository
 public interface CotisationRepository extends JpaRepository<Cotisation, Long> {
-    List<Cotisation> findByCollectiviteId(Long collectiviteId);
-    List<Cotisation> findByCollectiviteIdAndTypeCotisation(Long collectiviteId, TypeCotisation type);
+    Collection<Cotisation> findByCollectiviteId(Long collectiviteId);
+    Collection<Cotisation> findByCollectiviteIdAndTypeCotisation(Long collectiviteId, TypeCotisation type);
 }

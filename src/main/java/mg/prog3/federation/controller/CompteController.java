@@ -10,7 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import java.util.Collection;
 import java.util.Map;
 
 @RestController
@@ -24,9 +24,6 @@ public class CompteController {
             @PathVariable Long collectiviteId,
             @RequestBody Map<String, String> body) {
         String nomTitulaire = body.get("nomTitulaire");
-        if (nomTitulaire == null || nomTitulaire.isBlank()) {
-            return ResponseEntity.badRequest().build();
-        }
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(compteService.creerCaisseCollectivite(collectiviteId, nomTitulaire));
     }
@@ -48,7 +45,7 @@ public class CompteController {
     }
 
     @GetMapping("/collectivities/{collectiviteId}/comptes")
-    public ResponseEntity<List<CompteResponse>> getComptesByCollectivite(
+    public ResponseEntity<Collection<CompteResponse>> getComptesByCollectivite(
             @PathVariable Long collectiviteId) {
         return ResponseEntity.ok(compteService.getComptesByCollectivite(collectiviteId));
     }
@@ -57,9 +54,6 @@ public class CompteController {
     public ResponseEntity<CompteResponse> creerCaisseFederation(
             @RequestBody Map<String, String> body) {
         String nomTitulaire = body.get("nomTitulaire");
-        if (nomTitulaire == null || nomTitulaire.isBlank()) {
-            return ResponseEntity.badRequest().build();
-        }
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(compteService.creerCaisseFederation(nomTitulaire));
     }
@@ -79,7 +73,7 @@ public class CompteController {
     }
 
     @GetMapping("/federation/comptes")
-    public ResponseEntity<List<CompteResponse>> getComptesFederation() {
+    public ResponseEntity<Collection<CompteResponse>> getComptesFederation() {
         return ResponseEntity.ok(compteService.getComptesFederation());
     }
 

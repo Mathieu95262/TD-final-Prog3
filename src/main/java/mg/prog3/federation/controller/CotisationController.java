@@ -12,7 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.List;
+import java.util.Collection;
 
 @RestController
 @RequiredArgsConstructor
@@ -21,17 +21,17 @@ public class CotisationController {
     private final CotisationService cotisationService;
 
     @PostMapping("/collectivities/{collectiviteId}/membershipFees")
-    public ResponseEntity<List<CotisationResponse>> creerCotisations(
+    public ResponseEntity<Collection<CotisationResponse>> creerCotisations(
             @PathVariable Long collectiviteId,
-            @Valid @RequestBody List<CreateCotisationRequest> requests) {
-        List<CotisationResponse> responses = requests.stream()
+            @Valid @RequestBody Collection<CreateCotisationRequest> requests) {
+        Collection<CotisationResponse> responses = requests.stream()
                 .map(req -> cotisationService.creerCotisation(collectiviteId, req))
                 .toList();
         return ResponseEntity.status(HttpStatus.CREATED).body(responses);
     }
 
     @GetMapping("/collectivities/{collectiviteId}/membershipFees")
-    public ResponseEntity<List<CotisationResponse>> getCotisations(
+    public ResponseEntity<Collection<CotisationResponse>> getCotisations(
             @PathVariable Long collectiviteId) {
         return ResponseEntity.ok(cotisationService.getCotisationsByCollectivite(collectiviteId));
     }
@@ -44,7 +44,7 @@ public class CotisationController {
     }
 
     @GetMapping("/collectivities/{collectiviteId}/paiements")
-    public ResponseEntity<List<PaiementResponse>> getPaiements(
+    public ResponseEntity<Collection<PaiementResponse>> getPaiements(
             @PathVariable Long collectiviteId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate debut,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fin) {
@@ -53,7 +53,7 @@ public class CotisationController {
     }
 
     @GetMapping("/members/{membreId}/paiements")
-    public ResponseEntity<List<PaiementResponse>> getPaiementsByMembre(
+    public ResponseEntity<Collection<PaiementResponse>> getPaiementsByMembre(
             @PathVariable Long membreId) {
         return ResponseEntity.ok(cotisationService.getPaiementsByMembre(membreId));
     }

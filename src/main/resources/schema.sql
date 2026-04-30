@@ -1,111 +1,76 @@
+-- Drop tables if they exist to avoid conflicts
+DROP TABLE IF EXISTS transactions CASCADE;
+DROP TABLE IF EXISTS payments CASCADE;
+DROP TABLE IF EXISTS referees CASCADE;
+DROP TABLE IF EXISTS accounts CASCADE;
+DROP TABLE IF EXISTS membership_fees CASCADE;
+DROP TABLE IF EXISTS collectivity_structures CASCADE;
+DROP TABLE IF EXISTS members CASCADE;
+DROP TABLE IF EXISTS collectivities CASCADE;
 
+-- Create tables compatible with JPA entities
 CREATE TABLE IF NOT EXISTS collectivities (
-                                              id VARCHAR(36) PRIMARY KEY,
-    number VARCHAR(10) UNIQUE,
-    name VARCHAR(100) UNIQUE,
-    location VARCHAR(100),
-    specialty VARCHAR(100),
-    creation_date DATE,
-    federation_approval BOOLEAN,
-    annual_membership_dues DECIMAL(10,2)
+                                              id BIGSERIAL PRIMARY KEY,
+                                              numero VARCHAR(50) UNIQUE,
+    nom VARCHAR(100) UNIQUE,
+    ville VARCHAR(100) NOT NULL,
+    specialite_agricole VARCHAR(100) NOT NULL,
+    date_creation DATE NOT NULL,
+    autorisation_ouverture BOOLEAN NOT NULL DEFAULT false,
+    cotisation_annuelle_obligatoire BIGINT
     );
 
-
-CREATE TABLE IF NOT EXISTS members (
-                                       id VARCHAR(36) PRIMARY KEY,
-    last_name VARCHAR(100),
-    first_name VARCHAR(100),
-    birth_date DATE,
-    gender VARCHAR(10),
-    address TEXT,
-    profession VARCHAR(100),
-    phone_number VARCHAR(20),
-    email VARCHAR(255),
-    occupation VARCHAR(20),
-    collectivity_id VARCHAR(36),
-    adhesion_date DATE,
-    registration_fee_paid BOOLEAN,
-    membership_dues_paid BOOLEAN,
-    FOREIGN KEY (collectivity_id) REFERENCES collectivities(id)
+CREATE TABLE IF NOT EXISTS membres (
+                                       id BIGSERIAL PRIMARY KEY,
+                                       nom VARCHAR(100) NOT NULL,
+    prenom VARCHAR(100) NOT NULL,
+    date_naissance DATE NOT NULL,
+    genre VARCHAR(10) NOT NULL,
+    adresse VARCHAR(255) NOT NULL,
+    metier VARCHAR(100) NOT NULL,
+    telephone VARCHAR(20) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    date_adhesion DATE NOT NULL,
+    poste VARCHAR(20) NOT NULL,
+    actif BOOLEAN NOT NULL DEFAULT true,
+    collectivite_id BIGINT NOT NULL REFERENCES collectivities(id)
     );
 
-CREATE TABLE IF NOT EXISTS collectivity_structures (
-                                                       id VARCHAR(36) PRIMARY KEY,
-    collectivity_id VARCHAR(36) NOT NULL UNIQUE,
-    president_id VARCHAR(36),
-    vice_president_id VARCHAR(36),
-    treasurer_id VARCHAR(36),
-    secretary_id VARCHAR(36),
-    mandate_year INT,
-    start_date DATE,
-    end_date DATE,
-    FOREIGN KEY (collectivity_id) REFERENCES collectivities(id),
-    FOREIGN KEY (president_id) REFERENCES members(id),
-    FOREIGN KEY (vice_president_id) REFERENCES members(id),
-    FOREIGN KEY (treasurer_id) REFERENCES members(id),
-    FOREIGN KEY (secretary_id) REFERENCES members(id)
+CREATE TABLE IF NOT EXISTS cotisations (
+                                           id BIGSERIAL PRIMARY KEY,
+                                           type_cotisation VARCHAR(20) NOT NULL,
+    montant BIGINT NOT NULL,
+    description VARCHAR(255),
+    collectivite_id BIGINT NOT NULL REFERENCES collectivities(id)
     );
 
-
-CREATE TABLE IF NOT EXISTS referees (
-                                        id VARCHAR(36) PRIMARY KEY,
-    member_id VARCHAR(36),
-    referee_id VARCHAR(36),
-    relationship VARCHAR(50),
-    FOREIGN KEY (member_id) REFERENCES members(id),
-    FOREIGN KEY (referee_id) REFERENCES members(id)
+CREATE TABLE IF NOT EXISTS comptes (
+                                       id BIGSERIAL PRIMARY KEY,
+                                       dtype VARCHAR(20) NOT NULL,
+    nom_titulaire VARCHAR(200) NOT NULL,
+    solde BIGINT NOT NULL DEFAULT 0,
+    date_solde DATE NOT NULL,
+    type_compte VARCHAR(20) NOT NULL,
+    collectivite_id BIGINT REFERENCES collectivities(id),
+    appartient_federation BOOLEAN NOT NULL DEFAULT false,
+    nom_banque VARCHAR(50),
+    numero_compte_bancaire VARCHAR(23) UNIQUE,
+    service_mobile_money VARCHAR(30),
+    numero_telephone VARCHAR(20) UNIQUE
     );
 
-
-CREATE TABLE IF NOT EXISTS membership_fees (
-                                               id VARCHAR(36) PRIMARY KEY,
-    label VARCHAR(255),
-    frequency VARCHAR(20),
-    eligible_from DATE,
-    amount DECIMAL(10,2),
-    active BOOLEAN,
-    collectivity_id VARCHAR(36),
-    FOREIGN KEY (collectivity_id) REFERENCES collectivities(id)
+CREATE TABLE IF NOT EXISTS paiements (
+                                         id BIGSERIAL PRIMARY KEY,
+                                         montant BIGINT NOT NULL,
+                                         date_encaissement DATE NOT NULL,
+                                         mode_paiement VARCHAR(20) NOT NULL,
+    membre_id BIGINT NOT NULL REFERENCES membres(id),
+    cotisation_id BIGINT NOT NULL REFERENCES cotisations(id)
     );
 
-
-CREATE TABLE IF NOT EXISTS accounts (
-                                        id VARCHAR(36) PRIMARY KEY,
-    account_type VARCHAR(20),
-    holder_name VARCHAR(200),
-    bank_name VARCHAR(50),
-    mobile_service VARCHAR(30),
-    phone_number VARCHAR(20),
-    account_number VARCHAR(50),
-    balance DECIMAL(15,2),
-    collectivity_id VARCHAR(36),
-    FOREIGN KEY (collectivity_id) REFERENCES collectivities(id)
-    );
-
-
-CREATE TABLE IF NOT EXISTS payments (
-                                        id VARCHAR(36) PRIMARY KEY,
-    amount DECIMAL(15,2),
-    payment_mode VARCHAR(20),
-    payment_date DATE,
-    member_id VARCHAR(36),
-    membership_fee_id VARCHAR(36),
-    account_id VARCHAR(36),
-    FOREIGN KEY (member_id) REFERENCES members(id),
-    FOREIGN KEY (membership_fee_id) REFERENCES membership_fees(id),
-    FOREIGN KEY (account_id) REFERENCES accounts(id)
-    );
-
-
-CREATE TABLE IF NOT EXISTS transactions (
-                                            id VARCHAR(36) PRIMARY KEY,
-    amount DECIMAL(15,2),
-    payment_mode VARCHAR(20),
-    creation_date DATE,
-    collectivity_id VARCHAR(36),
-    account_id VARCHAR(36),
-    member_id VARCHAR(36),
-    FOREIGN KEY (collectivity_id) REFERENCES collectivities(id),
-    FOREIGN KEY (account_id) REFERENCES accounts(id),
-    FOREIGN KEY (member_id) REFERENCES members(id)
+CREATE TABLE IF NOT EXISTS parrainages (
+                                           id BIGSERIAL PRIMARY KEY,
+                                           relation VARCHAR(50) NOT NULL,
+    candidat_email VARCHAR(255),
+    parrain_id BIGINT NOT NULL REFERENCES membres(id)
     );

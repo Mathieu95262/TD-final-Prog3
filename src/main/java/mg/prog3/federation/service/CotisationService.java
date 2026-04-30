@@ -19,7 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.List;
+import java.util.Collection;
 
 @Service
 @RequiredArgsConstructor
@@ -54,7 +54,7 @@ public class CotisationService {
         if (!membre.getCollectivite().getId().equals(collectiviteId)) {
             throw new BusinessException(
                     "Member id=" + req.getMembreId()
-                    + " does not belong to collectivite id=" + collectiviteId);
+                            + " does not belong to collectivite id=" + collectiviteId);
         }
 
         Cotisation cotisation = cotisationRepository.findById(req.getCotisationId())
@@ -63,7 +63,7 @@ public class CotisationService {
         if (!cotisation.getCollectivite().getId().equals(collectiviteId)) {
             throw new BusinessException(
                     "Membership fee id=" + req.getCotisationId()
-                    + " does not belong to collectivite id=" + collectiviteId);
+                            + " does not belong to collectivite id=" + collectiviteId);
         }
 
         Paiement paiement = Paiement.builder()
@@ -78,7 +78,7 @@ public class CotisationService {
     }
 
     @Transactional(readOnly = true)
-    public List<CotisationResponse> getCotisationsByCollectivite(Long collectiviteId) {
+    public Collection<CotisationResponse> getCotisationsByCollectivite(Long collectiviteId) {
         findCollectivite(collectiviteId);
         return cotisationRepository.findByCollectiviteId(collectiviteId)
                 .stream().map(this::toResponse).toList();
@@ -90,7 +90,7 @@ public class CotisationService {
     }
 
     @Transactional(readOnly = true)
-    public List<PaiementResponse> getPaiementsByMembre(Long membreId) {
+    public Collection<PaiementResponse> getPaiementsByMembre(Long membreId) {
         if (!membreRepository.existsById(membreId)) {
             throw new ResourceNotFoundException("Member not found: " + membreId);
         }
@@ -99,7 +99,7 @@ public class CotisationService {
     }
 
     @Transactional(readOnly = true)
-    public List<PaiementResponse> getPaiementsByCollectiviteAndPeriode(
+    public Collection<PaiementResponse> getPaiementsByCollectiviteAndPeriode(
             Long collectiviteId, LocalDate debut, LocalDate fin) {
 
         findCollectivite(collectiviteId);
@@ -113,7 +113,7 @@ public class CotisationService {
     }
 
     @Transactional(readOnly = true)
-    public List<PaiementResponse> getPaiementsByCotisation(Long cotisationId) {
+    public Collection<PaiementResponse> getPaiementsByCotisation(Long cotisationId) {
         if (!cotisationRepository.existsById(cotisationId)) {
             throw new ResourceNotFoundException("Membership fee not found: " + cotisationId);
         }

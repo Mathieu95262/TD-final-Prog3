@@ -53,6 +53,7 @@ public class Membre {
     private Poste poste;
 
     @Column(name = "actif", nullable = false)
+    @Builder.Default
     private boolean actif = true;
 
     @ManyToOne(fetch = FetchType.LAZY)

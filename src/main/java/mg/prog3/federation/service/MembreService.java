@@ -22,7 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.List;
+import java.util.Collection;
 
 @Service
 @RequiredArgsConstructor
@@ -33,8 +33,10 @@ public class MembreService {
     private final PaiementRepository paiementRepository;
     private final CotisationRepository cotisationRepository;
 
+    private static final long ADMISSION_FEE = 50_000L;
+
     @Transactional
-    public List<MembreResponse> admettreMembers(List<CreateMembreRequest> requests) {
+    public Collection<MembreResponse> admettreMembers(Collection<CreateMembreRequest> requests) {
         return requests.stream().map(this::admettreMembre).toList();
     }
 
@@ -47,14 +49,14 @@ public class MembreService {
             throw new ConflictException("Email already in use: " + request.getEmail());
         }
 
-        List<ParrainRequest> parrainRequests = request.getParrains();
+        Collection<ParrainRequest> parrainRequests = request.getParrains();
 
         if (parrainRequests == null || parrainRequests.size() < 2) {
             throw new BusinessException("At least 2 confirmed sponsors are required.");
         }
 
         LocalDate threshold90days = LocalDate.now().minusDays(90);
-        List<Membre> sponsors = parrainRequests.stream()
+        Collection<Membre> sponsors = parrainRequests.stream()
                 .map(pr -> {
                     Membre sponsor = membreRepository.findById(pr.getParrainId())
                             .orElseThrow(() -> new ResourceNotFoundException(
@@ -79,18 +81,17 @@ public class MembreService {
         if (fromSameCollectivite < external) {
             throw new BusinessException(
                     "Sponsors from target collectivite (" + fromSameCollectivite
-                    + ") must be >= external sponsors (" + external + ").");
+                            + ") must be >= external sponsors (" + external + ").");
         }
 
-        long admissionFee = 50_000L;
         long annualFee = collectivite.getCotisationAnnuelleObligatoire() != null
                 ? collectivite.getCotisationAnnuelleObligatoire() : 0L;
-        long expectedAmount = admissionFee + annualFee;
+        long expectedAmount = ADMISSION_FEE + annualFee;
 
         if (request.getMontantPaye() < expectedAmount) {
             throw new BusinessException(
                     "Insufficient amount. Expected: " + expectedAmount
-                    + " MGA. Received: " + request.getMontantPaye() + " MGA.");
+                            + " MGA. Received: " + request.getMontantPaye() + " MGA.");
         }
 
         String paymentMethod = request.getModePaiement();
@@ -119,7 +120,7 @@ public class MembreService {
     }
 
     @Transactional
-    public List<PaiementResponse> enregistrerPaiements(Long membreId, List<CreatePaiementRequest> requests) {
+    public Collection<PaiementResponse> enregistrerPaiements(Long membreId, Collection<CreatePaiementRequest> requests) {
         Membre membre = findById(membreId);
         return requests.stream()
                 .map(req -> enregistrerUnPaiement(membre, req))
@@ -152,7 +153,7 @@ public class MembreService {
     }
 
     @Transactional(readOnly = true)
-    public List<MembreResponse> getMembresByCollectivite(Long collectiviteId) {
+    public Collection<MembreResponse> getMembresByCollectivite(Long collectiviteId) {
         if (!collectiviteRepository.existsById(collectiviteId)) {
             throw new ResourceNotFoundException("Collectivite not found: " + collectiviteId);
         }

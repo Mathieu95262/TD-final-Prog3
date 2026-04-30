@@ -19,7 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.Collection;
 
 @Service
 @RequiredArgsConstructor
@@ -29,12 +29,12 @@ public class CollectiviteService {
     private final MembreRepository membreRepository;
 
     @Transactional
-    public List<CollectiviteResponse> creerCollectivites(List<CreateCollectiviteRequest> requests) {
+    public Collection<CollectiviteResponse> creerCollectivites(Collection<CreateCollectiviteRequest> requests) {
         return requests.stream().map(this::creerUneCollectivite).toList();
     }
 
     private CollectiviteResponse creerUneCollectivite(CreateCollectiviteRequest request) {
-        List<MembreCollectiviteRequest> membresRequest = request.getMembres();
+        Collection<MembreCollectiviteRequest> membresRequest = request.getMembres();
 
         if (membresRequest.size() < 10) {
             throw new BusinessException("A collectivite must have at least 10 registered members.");
@@ -49,7 +49,7 @@ public class CollectiviteService {
         if (membersWithSeniority < 5) {
             throw new BusinessException(
                     "At least 5 members must have 6 months of seniority. Eligible: "
-                    + membersWithSeniority);
+                            + membersWithSeniority);
         }
 
         validateRequiredPositions(membresRequest);
@@ -70,7 +70,7 @@ public class CollectiviteService {
 
         collectivite = collectiviteRepository.save(collectivite);
 
-        List<Membre> membres = new ArrayList<>();
+        Collection<Membre> membres = new ArrayList<>();
         for (MembreCollectiviteRequest mr : membresRequest) {
             Membre membre = Membre.builder()
                     .nom(mr.getNom())
@@ -124,7 +124,7 @@ public class CollectiviteService {
         Collectivite collectivite = findById(id);
         long count = membreRepository.countMembresActifs(id);
 
-        List<MembreResponse> members = membreRepository.findByCollectiviteId(id).stream()
+        Collection<MembreResponse> members = membreRepository.findByCollectiviteId(id).stream()
                 .map(this::toMembreResponse)
                 .toList();
 
@@ -132,7 +132,7 @@ public class CollectiviteService {
     }
 
     @Transactional(readOnly = true)
-    public List<CollectiviteResponse> getAllCollectivites() {
+    public Collection<CollectiviteResponse> getAllCollectivites() {
         return collectiviteRepository.findAll().stream()
                 .map(c -> toResponse(c, membreRepository.countMembresActifs(c.getId()), null))
                 .toList();
@@ -143,11 +143,11 @@ public class CollectiviteService {
                 .orElseThrow(() -> new ResourceNotFoundException("Collectivite not found: " + id));
     }
 
-    private void validateRequiredPositions(List<MembreCollectiviteRequest> membres) {
-        long nbPresident        = membres.stream().filter(m -> m.getPoste() == Poste.PRESIDENT).count();
-        long nbVicePresident    = membres.stream().filter(m -> m.getPoste() == Poste.VICE_PRESIDENT).count();
-        long nbTreasurer        = membres.stream().filter(m -> m.getPoste() == Poste.TREASURER).count();
-        long nbSecretary        = membres.stream().filter(m -> m.getPoste() == Poste.SECRETARY).count();
+    private void validateRequiredPositions(Collection<MembreCollectiviteRequest> membres) {
+        long nbPresident = membres.stream().filter(m -> m.getPoste() == Poste.PRESIDENT).count();
+        long nbVicePresident = membres.stream().filter(m -> m.getPoste() == Poste.VICE_PRESIDENT).count();
+        long nbTreasurer = membres.stream().filter(m -> m.getPoste() == Poste.TREASURER).count();
+        long nbSecretary = membres.stream().filter(m -> m.getPoste() == Poste.SECRETARY).count();
 
         if (nbPresident == 0)       throw new BusinessException("President position is required.");
         if (nbPresident > 1)        throw new BusinessException("Only one president allowed.");
@@ -159,7 +159,7 @@ public class CollectiviteService {
         if (nbSecretary > 1)        throw new BusinessException("Only one secretary allowed.");
     }
 
-    private CollectiviteResponse toResponse(Collectivite c, long count, List<MembreResponse> members) {
+    private CollectiviteResponse toResponse(Collectivite c, long count, Collection<MembreResponse> members) {
         return CollectiviteResponse.builder()
                 .id(c.getId())
                 .numero(c.getNumero())

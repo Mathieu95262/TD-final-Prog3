@@ -6,7 +6,7 @@ import lombok.Data;
 import mg.prog3.federation.enums.Genre;
 
 import java.time.LocalDate;
-import java.util.List;
+import java.util.Collection;
 
 @Data
 public class CreateMembreRequest {
@@ -42,7 +42,7 @@ public class CreateMembreRequest {
     @NotNull(message = "Sponsor list is required")
     @Size(min = 2, message = "At least 2 confirmed sponsors are required")
     @Valid
-    private List<ParrainRequest> parrains;
+    private Collection<ParrainRequest> parrains;
 
     @NotNull(message = "Amount paid is required")
     @Positive(message = "Amount paid must be positive")
