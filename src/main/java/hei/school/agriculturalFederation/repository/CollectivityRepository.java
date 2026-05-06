@@ -1,0 +1,160 @@
+package hei.school.agriculturalFederation.repository;
+
+import hei.school.agriculturalFederation.datasource.DataSourceConfig;
+import hei.school.agriculturalFederation.model.*;
+import org.springframework.stereotype.Repository;
+
+import java.sql.*;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public class CollectivityRepository {
+
+    private final DataSourceConfig dataSourceConfig;
+    private final MemberRepository memberRepository;
+
+    public CollectivityRepository(DataSourceConfig dataSourceConfig, MemberRepository memberRepository) {
+        this.dataSourceConfig = dataSourceConfig;
+        this.memberRepository = memberRepository;
+    }
+
+    public boolean existsById(String id) {
+        Connection conn = dataSourceConfig.getConnection();
+        try (PreparedStatement ps = conn.prepareStatement("SELECT 1 FROM collectivity WHERE id = ?")) {
+            ps.setString(1, id);
+            return ps.executeQuery().next();
+        } catch (SQLException e) {
+            throw new RuntimeException("Error in existsById collectivity: " + e.getMessage(), e);
+        } finally {
+            dataSourceConfig.closeConnection(conn);
+        }
+    }
+
+    public Optional<Collectivity> findById(String id) {
+        Connection conn = dataSourceConfig.getConnection();
+        try (PreparedStatement ps = conn.prepareStatement("SELECT * FROM collectivity WHERE id = ?")) {
+            ps.setString(1, id);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return Optional.of(mapRow(rs));
+            }
+            return Optional.empty();
+        } catch (SQLException e) {
+            throw new RuntimeException("Error in findById collectivity: " + e.getMessage(), e);
+        } finally {
+            dataSourceConfig.closeConnection(conn);
+        }
+    }
+
+    private Collectivity mapRow(ResultSet rs) throws SQLException {
+        Collectivity c = new Collectivity();
+        c.setId(rs.getString("id"));
+        c.setUniqueNumber(rs.getString("unique_number"));
+        c.setUniqueName(rs.getString("unique_name"));
+        c.setName(rs.getString("name"));
+        c.setLocation(rs.getString("location"));
+        c.setAgriculturalSpecialty(rs.getString("agricultural_specialty"));
+
+        CollectivityStructure structure = new CollectivityStructure();
+        String presidentId     = rs.getString("president_id");
+        String vicePresidentId = rs.getString("vice_president_id");
+        String treasurerId     = rs.getString("treasurer_id");
+        String secretaryId     = rs.getString("secretary_id");
+
+        if (presidentId != null)
+            memberRepository.findById(presidentId).ifPresent(structure::setPresident);
+        if (vicePresidentId != null)
+            memberRepository.findById(vicePresidentId).ifPresent(structure::setVicePresident);
+        if (treasurerId != null)
+            memberRepository.findById(treasurerId).ifPresent(structure::setTreasurer);
+        if (secretaryId != null)
+            memberRepository.findById(secretaryId).ifPresent(structure::setSecretary);
+
+        c.setStructure(structure);
+        c.setMembers(memberRepository.findAllByCollectivityId(c.getId()));
+        return c;
+    }
+
+    public Collectivity save(String id,
+                             String location,
+                             boolean federationApproval,
+                             String presidentId,
+                             String vicePresidentId,
+                             String treasurerId,
+                             String secretaryId) {
+        String sql = """
+                INSERT INTO collectivity
+                  (id, name, location, agricultural_specialty, creation_date,
+                   federation_approval, president_id, vice_president_id, treasurer_id, secretary_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """;
+        Connection conn = dataSourceConfig.getConnection();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, id);
+            ps.setString(2, "Collectivity-" + id);
+            ps.setString(3, location);
+            ps.setString(4, "Not defined");
+            ps.setDate(5, Date.valueOf(LocalDate.now()));
+            ps.setBoolean(6, federationApproval);
+            ps.setString(7, presidentId);
+            ps.setString(8, vicePresidentId);
+            ps.setString(9, treasurerId);
+            ps.setString(10, secretaryId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Error in save collectivity: " + e.getMessage(), e);
+        } finally {
+            dataSourceConfig.closeConnection(conn);
+        }
+        return findById(id).orElseThrow();
+    }
+
+    public List<String> findAllIds() {
+        Connection conn = dataSourceConfig.getConnection();
+        try (PreparedStatement ps = conn.prepareStatement("SELECT id FROM collectivity")) {
+            ResultSet rs = ps.executeQuery();
+            List<String> ids = new ArrayList<>();
+            while (rs.next()) ids.add(rs.getString("id"));
+            return ids;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error in findAllIds collectivity: " + e.getMessage(), e);
+        } finally {
+            dataSourceConfig.closeConnection(conn);
+        }
+    }
+
+    public void updateInformation(String id, String uniqueNumber, String uniqueName) {
+        Connection conn = dataSourceConfig.getConnection();
+        try (PreparedStatement ps = conn.prepareStatement(
+                "UPDATE collectivity SET unique_number = COALESCE(unique_number, ?), unique_name = COALESCE(unique_name, ?) WHERE id = ?")) {
+            ps.setString(1, uniqueNumber);
+            ps.setString(2, uniqueName);
+            ps.setString(3, id);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Error updating collectivity information: " + e.getMessage(), e);
+        } finally {
+            dataSourceConfig.closeConnection(conn);
+        }
+    }
+
+    public void updateMemberCollectivity(List<String> memberIds, String collectivityId) {
+        Connection conn = dataSourceConfig.getConnection();
+        try (PreparedStatement ps = conn.prepareStatement(
+                "UPDATE member SET collectivity_id = ? WHERE id = ?")) {
+            for (String memberId : memberIds) {
+                ps.setString(1, collectivityId);
+                ps.setString(2, memberId);
+                ps.addBatch();
+            }
+            ps.executeBatch();
+        } catch (SQLException e) {
+            throw new RuntimeException("Error in updateMemberCollectivity: " + e.getMessage(), e);
+        } finally {
+            dataSourceConfig.closeConnection(conn);
+        }
+    }
+}

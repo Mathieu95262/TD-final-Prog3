@@ -1,16 +1,15 @@
-server:
-  port: 8080
-
 spring:
   application:
-    name: federation-agricole-api
+    name: TD-Final-OAS
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/db_agricole_federation
+    username: postgres
+    password: jose/2007
+    driver-class-name: org.postgresql.Driver
+
   sql:
     init:
       mode: always
-      continue-on-error: true
-
-app:
-  datasource:
-    url: jdbc:postgresql://localhost:5432/agricol_federation
-    username: postgres
-    password: Adminsql
+      schema-locations: classpath:schema.sql
+      data-locations: classpath:data.sql
