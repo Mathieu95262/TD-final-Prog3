@@ -1,28 +1,17 @@
 package mg.prog3.federation.entity;
 
-import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-@Entity
-@Table(name = "parrainages")
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class Parrainage {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "parrain_id", nullable = false)
-    private Membre parrain;
-
-    @Column(name = "relation", nullable = false)
+    private Long parrainId;
     private String relation;
-
-    @Column(name = "candidat_email")
     private String candidatEmail;
 }
