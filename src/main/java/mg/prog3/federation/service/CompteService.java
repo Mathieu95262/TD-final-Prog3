@@ -31,22 +31,24 @@ public class CompteService {
             "AFG", "ACCES_BANQUE", "BAOBAB", "SIPEM");
 
     private static final Set<String> ALLOWED_MOBILE_SERVICES = Set.of(
-            "Orange Money", "Mvola", "Airtel Money");
+            "ORANGE_MONEY", "MVOLA", "AIRTEL_MONEY");
 
     @Transactional
     public CompteResponse creerCaisseCollectivite(Long collectiviteId, String nomTitulaire) {
-        Collectivite collectivite = findCollectivite(collectiviteId);
+        if (!collectiviteRepository.existsById(collectiviteId)) {
+            throw new ResourceNotFoundException("Collectivite not found: " + collectiviteId);
+        }
 
         if (compteRepository.existsByCollectiviteIdAndTypeCompte(collectiviteId, TypeCompte.CASH_REGISTER)) {
             throw new ConflictException("Collectivite id=" + collectiviteId + " already has a cash register.");
         }
 
-        Caisse caisse = Caisse.builder()
+        Compte caisse = Compte.builder()
                 .nomTitulaire(nomTitulaire)
                 .solde(0L)
                 .dateSolde(LocalDate.now())
                 .typeCompte(TypeCompte.CASH_REGISTER)
-                .collectivite(collectivite)
+                .collectiviteId(collectiviteId)
                 .appartientFederation(false)
                 .build();
 
@@ -59,12 +61,11 @@ public class CompteService {
             throw new ConflictException("The federation already has a cash register.");
         }
 
-        Caisse caisse = Caisse.builder()
+        Compte caisse = Compte.builder()
                 .nomTitulaire(nomTitulaire)
                 .solde(0L)
                 .dateSolde(LocalDate.now())
                 .typeCompte(TypeCompte.CASH_REGISTER)
-                .collectivite(null)
                 .appartientFederation(true)
                 .build();
 
@@ -73,18 +74,20 @@ public class CompteService {
 
     @Transactional
     public CompteResponse creerCompteBancaireCollectivite(Long collectiviteId, CreateCompteBancaireRequest req) {
-        Collectivite collectivite = findCollectivite(collectiviteId);
+        if (!collectiviteRepository.existsById(collectiviteId)) {
+            throw new ResourceNotFoundException("Collectivite not found: " + collectiviteId);
+        }
         validateBankName(req.getNomBanque());
         validateUniqueRib(req.getNumeroCompteBancaire());
 
-        CompteBancaire compte = CompteBancaire.builder()
+        Compte compte = Compte.builder()
                 .nomTitulaire(req.getNomTitulaire())
                 .nomBanque(req.getNomBanque())
                 .numeroCompteBancaire(req.getNumeroCompteBancaire())
                 .solde(0L)
                 .dateSolde(LocalDate.now())
                 .typeCompte(TypeCompte.BANK)
-                .collectivite(collectivite)
+                .collectiviteId(collectiviteId)
                 .appartientFederation(false)
                 .build();
 
@@ -96,14 +99,13 @@ public class CompteService {
         validateBankName(req.getNomBanque());
         validateUniqueRib(req.getNumeroCompteBancaire());
 
-        CompteBancaire compte = CompteBancaire.builder()
+        Compte compte = Compte.builder()
                 .nomTitulaire(req.getNomTitulaire())
                 .nomBanque(req.getNomBanque())
                 .numeroCompteBancaire(req.getNumeroCompteBancaire())
                 .solde(0L)
                 .dateSolde(LocalDate.now())
                 .typeCompte(TypeCompte.BANK)
-                .collectivite(null)
                 .appartientFederation(true)
                 .build();
 
@@ -112,18 +114,20 @@ public class CompteService {
 
     @Transactional
     public CompteResponse creerCompteMobileMoneyCollectivite(Long collectiviteId, CreateCompteMobileMoneyRequest req) {
-        Collectivite collectivite = findCollectivite(collectiviteId);
+        if (!collectiviteRepository.existsById(collectiviteId)) {
+            throw new ResourceNotFoundException("Collectivite not found: " + collectiviteId);
+        }
         validateMobileMoneyService(req.getServiceMobileMoney());
         validateUniquePhoneNumber(req.getNumeroTelephone());
 
-        CompteMobileMoney compte = CompteMobileMoney.builder()
+        Compte compte = Compte.builder()
                 .nomTitulaire(req.getNomTitulaire())
                 .serviceMobileMoney(req.getServiceMobileMoney())
                 .numeroTelephone(req.getNumeroTelephone())
                 .solde(0L)
                 .dateSolde(LocalDate.now())
                 .typeCompte(TypeCompte.MOBILE_MONEY)
-                .collectivite(collectivite)
+                .collectiviteId(collectiviteId)
                 .appartientFederation(false)
                 .build();
 
@@ -135,14 +139,13 @@ public class CompteService {
         validateMobileMoneyService(req.getServiceMobileMoney());
         validateUniquePhoneNumber(req.getNumeroTelephone());
 
-        CompteMobileMoney compte = CompteMobileMoney.builder()
+        Compte compte = Compte.builder()
                 .nomTitulaire(req.getNomTitulaire())
                 .serviceMobileMoney(req.getServiceMobileMoney())
                 .numeroTelephone(req.getNumeroTelephone())
                 .solde(0L)
                 .dateSolde(LocalDate.now())
                 .typeCompte(TypeCompte.MOBILE_MONEY)
-                .collectivite(null)
                 .appartientFederation(true)
                 .build();
 
@@ -151,7 +154,9 @@ public class CompteService {
 
     @Transactional(readOnly = true)
     public Collection<CompteAvecSoldeResponse> getFinancialAccounts(Long collectiviteId, LocalDate at) {
-        findCollectivite(collectiviteId);
+        if (!collectiviteRepository.existsById(collectiviteId)) {
+            throw new ResourceNotFoundException("Collectivite not found: " + collectiviteId);
+        }
         return compteRepository.findByCollectiviteId(collectiviteId).stream()
                 .filter(c -> !c.getDateSolde().isAfter(at))
                 .map(this::toAvecSoldeResponse)
@@ -160,7 +165,9 @@ public class CompteService {
 
     @Transactional(readOnly = true)
     public Collection<CompteResponse> getComptesByCollectivite(Long collectiviteId) {
-        findCollectivite(collectiviteId);
+        if (!collectiviteRepository.existsById(collectiviteId)) {
+            throw new ResourceNotFoundException("Collectivite not found: " + collectiviteId);
+        }
         return compteRepository.findByCollectiviteId(collectiviteId)
                 .stream().map(this::toResponse).toList();
     }
@@ -202,17 +209,12 @@ public class CompteService {
         }
     }
 
-    private Collectivite findCollectivite(Long id) {
-        return collectiviteRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Collectivite not found: " + id));
-    }
-
     private Compte findCompte(Long id) {
         return compteRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + id));
     }
 
-    public CompteResponse toResponse(Compte c) {
+    private CompteResponse toResponse(Compte c) {
         CompteResponse.CompteResponseBuilder builder = CompteResponse.builder()
                 .id(c.getId())
                 .typeCompte(c.getTypeCompte())
@@ -220,33 +222,26 @@ public class CompteService {
                 .solde(c.getSolde())
                 .dateSolde(c.getDateSolde())
                 .appartientFederation(c.isAppartientFederation())
-                .collectiviteId(c.getCollectivite() != null ? c.getCollectivite().getId() : null);
+                .collectiviteId(c.getCollectiviteId())
+                .nomBanque(c.getNomBanque())
+                .numeroCompteBancaire(c.getNumeroCompteBancaire())
+                .serviceMobileMoney(c.getServiceMobileMoney())
+                .numeroTelephone(c.getNumeroTelephone());
 
-        if (c instanceof CompteBancaire cb) {
-            builder.nomBanque(cb.getNomBanque())
-                    .numeroCompteBancaire(cb.getNumeroCompteBancaire());
-        } else if (c instanceof CompteMobileMoney cm) {
-            builder.serviceMobileMoney(cm.getServiceMobileMoney())
-                    .numeroTelephone(cm.getNumeroTelephone());
-        }
         return builder.build();
     }
 
     private CompteAvecSoldeResponse toAvecSoldeResponse(Compte c) {
-        CompteAvecSoldeResponse.CompteAvecSoldeResponseBuilder b = CompteAvecSoldeResponse.builder()
+        return CompteAvecSoldeResponse.builder()
                 .id(c.getId())
                 .typeCompte(c.getTypeCompte())
                 .nomTitulaire(c.getNomTitulaire())
                 .solde(c.getSolde())
-                .dateSolde(c.getDateSolde());
-
-        if (c instanceof CompteBancaire cb) {
-            b.nomBanque(cb.getNomBanque())
-                    .numeroCompteBancaire(cb.getNumeroCompteBancaire());
-        } else if (c instanceof CompteMobileMoney cm) {
-            b.serviceMobileMoney(cm.getServiceMobileMoney())
-                    .numeroTelephone(cm.getNumeroTelephone());
-        }
-        return b.build();
+                .dateSolde(c.getDateSolde())
+                .nomBanque(c.getNomBanque())
+                .numeroCompteBancaire(c.getNumeroCompteBancaire())
+                .serviceMobileMoney(c.getServiceMobileMoney())
+                .numeroTelephone(c.getNumeroTelephone())
+                .build();
     }
 }

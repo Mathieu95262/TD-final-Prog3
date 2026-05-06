@@ -71,12 +71,20 @@ public class MembreRepository {
                                telephone, email, date_adhesion, poste, actif, collectivite_id)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """;
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             for (Membre m : membres) {
                 setMembreParams(ps, m);
                 ps.addBatch();
             }
             ps.executeBatch();
+
+            try (ResultSet rs = ps.getGeneratedKeys()) {
+                int i = 0;
+                while (rs.next() && i < membres.size()) {
+                    membres.get(i).setId(rs.getLong(1));
+                    i++;
+                }
+            }
         } catch (SQLException e) {
             throw new RuntimeException("Erreur lors de l'insertion des membres", e);
         }

@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -70,7 +71,7 @@ public class CollectiviteService {
 
         collectivite = collectiviteRepository.save(collectivite);
 
-        Collection<Membre> membres = new ArrayList<>();
+        List<Membre> membres = new ArrayList<>();
         for (MembreCollectiviteRequest mr : membresRequest) {
             Membre membre = Membre.builder()
                     .nom(mr.getNom())
@@ -85,7 +86,7 @@ public class CollectiviteService {
                             ? mr.getDateAdhesionFederation() : LocalDate.now())
                     .poste(mr.getPoste())
                     .actif(true)
-                    .collectivite(collectivite)
+                    .collectiviteId(collectivite.getId())
                     .build();
             membres.add(membre);
         }
@@ -175,6 +176,10 @@ public class CollectiviteService {
     }
 
     private MembreResponse toMembreResponse(Membre m) {
+        String collectiviteNom = collectiviteRepository.findById(m.getCollectiviteId())
+                .map(Collectivite::getNom)
+                .orElse(null);
+
         return MembreResponse.builder()
                 .id(m.getId())
                 .nom(m.getNom())
@@ -188,8 +193,8 @@ public class CollectiviteService {
                 .dateAdhesion(m.getDateAdhesion())
                 .poste(m.getPoste())
                 .actif(m.isActif())
-                .collectiviteId(m.getCollectivite().getId())
-                .collectiviteNom(m.getCollectivite().getNom())
+                .collectiviteId(m.getCollectiviteId())
+                .collectiviteNom(collectiviteNom)
                 .build();
     }
 }

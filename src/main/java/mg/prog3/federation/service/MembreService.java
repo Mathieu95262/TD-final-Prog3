@@ -6,7 +6,6 @@ import mg.prog3.federation.dto.request.CreatePaiementRequest;
 import mg.prog3.federation.dto.request.ParrainRequest;
 import mg.prog3.federation.dto.response.MembreResponse;
 import mg.prog3.federation.dto.response.PaiementResponse;
-import mg.prog3.federation.entity.Collectivite;
 import mg.prog3.federation.entity.Cotisation;
 import mg.prog3.federation.entity.Membre;
 import mg.prog3.federation.entity.Paiement;
@@ -41,9 +40,10 @@ public class MembreService {
     }
 
     private MembreResponse admettreMembre(CreateMembreRequest request) {
-        Collectivite collectivite = collectiviteRepository.findById(request.getCollectiviteId())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Collectivite not found: " + request.getCollectiviteId()));
+        if (!collectiviteRepository.existsById(request.getCollectiviteId())) {
+            throw new ResourceNotFoundException(
+                    "Collectivite not found: " + request.getCollectiviteId());
+        }
 
         if (membreRepository.existsByEmail(request.getEmail())) {
             throw new ConflictException("Email already in use: " + request.getEmail());
@@ -74,7 +74,7 @@ public class MembreService {
                 .toList();
 
         long fromSameCollectivite = sponsors.stream()
-                .filter(p -> p.getCollectivite().getId().equals(request.getCollectiviteId()))
+                .filter(p -> p.getCollectiviteId().equals(request.getCollectiviteId()))
                 .count();
         long external = sponsors.size() - fromSameCollectivite;
 
@@ -84,9 +84,10 @@ public class MembreService {
                             + ") must be >= external sponsors (" + external + ").");
         }
 
-        long annualFee = collectivite.getCotisationAnnuelleObligatoire() != null
-                ? collectivite.getCotisationAnnuelleObligatoire() : 0L;
-        long expectedAmount = ADMISSION_FEE + annualFee;
+        Long cotisationAnnuelle = collectiviteRepository.findById(request.getCollectiviteId())
+                .map(c -> c.getCotisationAnnuelleObligatoire())
+                .orElse(0L);
+        long expectedAmount = ADMISSION_FEE + (cotisationAnnuelle != null ? cotisationAnnuelle : 0L);
 
         if (request.getMontantPaye() < expectedAmount) {
             throw new BusinessException(
@@ -113,7 +114,7 @@ public class MembreService {
                 .dateAdhesion(LocalDate.now())
                 .poste(Poste.JUNIOR_MEMBER)
                 .actif(true)
-                .collectivite(collectivite)
+                .collectiviteId(request.getCollectiviteId())
                 .build();
 
         return toResponse(membreRepository.save(membre));
@@ -132,7 +133,7 @@ public class MembreService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Membership fee not found: " + req.getCotisationId()));
 
-        if (!cotisation.getCollectivite().getId().equals(membre.getCollectivite().getId())) {
+        if (!cotisation.getCollectiviteId().equals(membre.getCollectiviteId())) {
             throw new BusinessException("Membership fee does not belong to the member's collectivite.");
         }
 
@@ -140,8 +141,8 @@ public class MembreService {
                 .montant(req.getMontant())
                 .dateEncaissement(req.getDateEncaissement())
                 .modePaiement(req.getModePaiement())
-                .membre(membre)
-                .cotisation(cotisation)
+                .membreId(membre.getId())
+                .cotisationId(cotisation.getId())
                 .build();
 
         return toPaiementResponse(paiementRepository.save(paiement));
@@ -167,6 +168,10 @@ public class MembreService {
     }
 
     public MembreResponse toResponse(Membre m) {
+        String collectiviteNom = collectiviteRepository.findById(m.getCollectiviteId())
+                .map(c -> c.getNom())
+                .orElse(null);
+
         return MembreResponse.builder()
                 .id(m.getId())
                 .nom(m.getNom())
@@ -180,21 +185,29 @@ public class MembreService {
                 .dateAdhesion(m.getDateAdhesion())
                 .poste(m.getPoste())
                 .actif(m.isActif())
-                .collectiviteId(m.getCollectivite().getId())
-                .collectiviteNom(m.getCollectivite().getNom())
+                .collectiviteId(m.getCollectiviteId())
+                .collectiviteNom(collectiviteNom)
                 .build();
     }
 
     private PaiementResponse toPaiementResponse(Paiement p) {
+        String membreName = membreRepository.findById(p.getMembreId())
+                .map(m -> m.getNom() + " " + m.getPrenom())
+                .orElse("Inconnu");
+
+        String cotisationDesc = cotisationRepository.findById(p.getCotisationId())
+                .map(Cotisation::getDescription)
+                .orElse(null);
+
         return PaiementResponse.builder()
                 .id(p.getId())
                 .montant(p.getMontant())
                 .dateEncaissement(p.getDateEncaissement())
                 .modePaiement(p.getModePaiement())
-                .membreId(p.getMembre().getId())
-                .membreNomPrenom(p.getMembre().getNom() + " " + p.getMembre().getPrenom())
-                .cotisationId(p.getCotisation().getId())
-                .cotisationDescription(p.getCotisation().getDescription())
+                .membreId(p.getMembreId())
+                .membreNomPrenom(membreName)
+                .cotisationId(p.getCotisationId())
+                .cotisationDescription(cotisationDesc)
                 .build();
     }
 }

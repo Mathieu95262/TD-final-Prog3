@@ -4,9 +4,13 @@ server:
 spring:
   application:
     name: federation-agricole-api
+  sql:
+    init:
+      mode: always
+      continue-on-error: true
 
 app:
   datasource:
-    url: jdbc:postgresql://localhost:5432/agricole_federation
+    url: jdbc:postgresql://localhost:5432/agricol_federation
     username: postgres
-    password: admin123
+    password: Adminsql

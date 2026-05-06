@@ -5,9 +5,7 @@ import mg.prog3.federation.dto.request.CreateCotisationRequest;
 import mg.prog3.federation.dto.request.CreatePaiementRequest;
 import mg.prog3.federation.dto.response.CotisationResponse;
 import mg.prog3.federation.dto.response.PaiementResponse;
-import mg.prog3.federation.entity.Collectivite;
 import mg.prog3.federation.entity.Cotisation;
-import mg.prog3.federation.entity.Membre;
 import mg.prog3.federation.entity.Paiement;
 import mg.prog3.federation.exception.BusinessException;
 import mg.prog3.federation.exception.ResourceNotFoundException;
@@ -32,13 +30,15 @@ public class CotisationService {
 
     @Transactional
     public CotisationResponse creerCotisation(Long collectiviteId, CreateCotisationRequest req) {
-        Collectivite collectivite = findCollectivite(collectiviteId);
+        if (!collectiviteRepository.existsById(collectiviteId)) {
+            throw new ResourceNotFoundException("Collectivite not found: " + collectiviteId);
+        }
 
         Cotisation cotisation = Cotisation.builder()
                 .typeCotisation(req.getTypeCotisation())
                 .montant(req.getMontant())
                 .description(req.getDescription())
-                .collectivite(collectivite)
+                .collectiviteId(collectiviteId)
                 .build();
 
         return toResponse(cotisationRepository.save(cotisation));
@@ -46,21 +46,18 @@ public class CotisationService {
 
     @Transactional
     public PaiementResponse enregistrerPaiement(Long collectiviteId, CreatePaiementRequest req) {
-        findCollectivite(collectiviteId);
+        if (!collectiviteRepository.existsById(collectiviteId)) {
+            throw new ResourceNotFoundException("Collectivite not found: " + collectiviteId);
+        }
 
-        Membre membre = membreRepository.findById(req.getMembreId())
-                .orElseThrow(() -> new ResourceNotFoundException("Member not found: " + req.getMembreId()));
-
-        if (!membre.getCollectivite().getId().equals(collectiviteId)) {
-            throw new BusinessException(
-                    "Member id=" + req.getMembreId()
-                            + " does not belong to collectivite id=" + collectiviteId);
+        if (!membreRepository.existsById(req.getMembreId())) {
+            throw new ResourceNotFoundException("Member not found: " + req.getMembreId());
         }
 
         Cotisation cotisation = cotisationRepository.findById(req.getCotisationId())
                 .orElseThrow(() -> new ResourceNotFoundException("Membership fee not found: " + req.getCotisationId()));
 
-        if (!cotisation.getCollectivite().getId().equals(collectiviteId)) {
+        if (!cotisation.getCollectiviteId().equals(collectiviteId)) {
             throw new BusinessException(
                     "Membership fee id=" + req.getCotisationId()
                             + " does not belong to collectivite id=" + collectiviteId);
@@ -70,8 +67,8 @@ public class CotisationService {
                 .montant(req.getMontant())
                 .dateEncaissement(req.getDateEncaissement())
                 .modePaiement(req.getModePaiement())
-                .membre(membre)
-                .cotisation(cotisation)
+                .membreId(req.getMembreId())
+                .cotisationId(req.getCotisationId())
                 .build();
 
         return toPaiementResponse(paiementRepository.save(paiement));
@@ -79,7 +76,9 @@ public class CotisationService {
 
     @Transactional(readOnly = true)
     public Collection<CotisationResponse> getCotisationsByCollectivite(Long collectiviteId) {
-        findCollectivite(collectiviteId);
+        if (!collectiviteRepository.existsById(collectiviteId)) {
+            throw new ResourceNotFoundException("Collectivite not found: " + collectiviteId);
+        }
         return cotisationRepository.findByCollectiviteId(collectiviteId)
                 .stream().map(this::toResponse).toList();
     }
@@ -87,6 +86,18 @@ public class CotisationService {
     @Transactional(readOnly = true)
     public CotisationResponse getCotisationById(Long id) {
         return toResponse(findCotisation(id));
+    }
+
+    @Transactional
+    public CotisationResponse toggleCotisationStatus(Long collectiviteId, Long cotisationId) {
+        Cotisation cotisation = cotisationRepository.findById(cotisationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cotisation not found: " + cotisationId));
+
+        if (!cotisation.getCollectiviteId().equals(collectiviteId)) {
+            throw new BusinessException("Cotisation does not belong to collectivite: " + collectiviteId);
+        }
+
+        return toResponse(cotisationRepository.save(cotisation));
     }
 
     @Transactional(readOnly = true)
@@ -102,7 +113,9 @@ public class CotisationService {
     public Collection<PaiementResponse> getPaiementsByCollectiviteAndPeriode(
             Long collectiviteId, LocalDate debut, LocalDate fin) {
 
-        findCollectivite(collectiviteId);
+        if (!collectiviteRepository.existsById(collectiviteId)) {
+            throw new ResourceNotFoundException("Collectivite not found: " + collectiviteId);
+        }
 
         if (debut.isAfter(fin)) {
             throw new BusinessException("Start date must be before end date.");
@@ -121,37 +134,44 @@ public class CotisationService {
                 .stream().map(this::toPaiementResponse).toList();
     }
 
-    private Collectivite findCollectivite(Long id) {
-        return collectiviteRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Collectivite not found: " + id));
-    }
-
     private Cotisation findCotisation(Long id) {
         return cotisationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Membership fee not found: " + id));
     }
 
     private CotisationResponse toResponse(Cotisation c) {
+        String collectiviteNom = collectiviteRepository.findById(c.getCollectiviteId())
+                .map(coll -> coll.getNom())
+                .orElse(null);
+
         return CotisationResponse.builder()
                 .id(c.getId())
                 .typeCotisation(c.getTypeCotisation())
                 .montant(c.getMontant())
                 .description(c.getDescription())
-                .collectiviteId(c.getCollectivite().getId())
-                .collectiviteNom(c.getCollectivite().getNom())
+                .collectiviteId(c.getCollectiviteId())
+                .collectiviteNom(collectiviteNom)
                 .build();
     }
 
     private PaiementResponse toPaiementResponse(Paiement p) {
+        String membreName = membreRepository.findById(p.getMembreId())
+                .map(m -> m.getNom() + " " + m.getPrenom())
+                .orElse("Inconnu");
+
+        String cotisationDesc = cotisationRepository.findById(p.getCotisationId())
+                .map(Cotisation::getDescription)
+                .orElse(null);
+
         return PaiementResponse.builder()
                 .id(p.getId())
                 .montant(p.getMontant())
                 .dateEncaissement(p.getDateEncaissement())
                 .modePaiement(p.getModePaiement())
-                .membreId(p.getMembre().getId())
-                .membreNomPrenom(p.getMembre().getNom() + " " + p.getMembre().getPrenom())
-                .cotisationId(p.getCotisation().getId())
-                .cotisationDescription(p.getCotisation().getDescription())
+                .membreId(p.getMembreId())
+                .membreNomPrenom(membreName)
+                .cotisationId(p.getCotisationId())
+                .cotisationDescription(cotisationDesc)
                 .build();
     }
 }

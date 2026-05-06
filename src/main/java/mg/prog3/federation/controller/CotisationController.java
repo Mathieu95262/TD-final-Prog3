@@ -43,6 +43,13 @@ public class CotisationController {
         return ResponseEntity.ok(cotisationService.getCotisationById(cotisationId));
     }
 
+    @PatchMapping("/collectivities/{collectiviteId}/membershipFees/{cotisationId}/toggle-status")
+    public ResponseEntity<CotisationResponse> toggleCotisationStatus(
+            @PathVariable Long collectiviteId,
+            @PathVariable Long cotisationId) {
+        return ResponseEntity.ok(cotisationService.toggleCotisationStatus(collectiviteId, cotisationId));
+    }
+
     @GetMapping("/collectivities/{collectiviteId}/paiements")
     public ResponseEntity<Collection<PaiementResponse>> getPaiements(
             @PathVariable Long collectiviteId,
