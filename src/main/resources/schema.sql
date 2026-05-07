@@ -1,4 +1,3 @@
--- Types énumérés (versions complètes fusionnées)
 DROP TYPE IF EXISTS gender_enum CASCADE;
 CREATE TYPE gender_enum AS ENUM ('MALE', 'FEMALE', 'M', 'F');
 
