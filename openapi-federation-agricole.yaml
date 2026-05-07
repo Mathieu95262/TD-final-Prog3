@@ -6,13 +6,14 @@ info:
     
     Elle couvre les fonctionnalités suivantes :
     - **A** : Ouverture d'une nouvelle collectivité
-    - **B** : Admission et gestion des membres (mise à jour B-2 du 21 avril 2026)
+    - **B** : Admission et gestion des membres
     - **C** : Cotisations et paiements
     - **D** : Situation de trésorerie
     - **E** : Activités des collectivités et de la fédération
     - **F** : Assiduité des membres
     - **G** : Statistiques d'une collectivité
-    - **H** : Statistiques de la fédération (ajout du 21 avril 2026)
+    - **H** : Statistiques de la fédération
+    - **verification** : Vérification via une clé API pour plus de securité 
   version: 2.0.0
   contact:
     name: Fédération Agricole Madagascar
