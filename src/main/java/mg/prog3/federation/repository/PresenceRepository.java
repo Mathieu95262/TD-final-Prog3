@@ -104,4 +104,40 @@ public class PresenceRepository {
                 .motif(rs.getString("motif"))
                 .build();
     }
+    public long countPresencesByMembreIdAndPeriode(Long membreId, Date debut, Date fin) {
+        String sql = """
+        SELECT COUNT(*) FROM presences p
+        JOIN activites a ON p.activite_id = a.id
+        WHERE p.membre_id = ? AND a.date_activite BETWEEN ? AND ? AND p.present = true
+    """;
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setLong(1, membreId);
+            ps.setDate(2, debut);
+            ps.setDate(3, fin);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getLong(1);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur comptage présences", e);
+        }
+        return 0;
+    }
+
+    public long countTotalActivitesByCollectiviteAndPeriode(Long collectiviteId, Date debut, Date fin) {
+        String sql = """
+        SELECT COUNT(*) FROM activites
+        WHERE collectivite_id = ? AND date_activite BETWEEN ? AND ?
+    """;
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setLong(1, collectiviteId);
+            ps.setDate(2, debut);
+            ps.setDate(3, fin);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getLong(1);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur comptage activités", e);
+        }
+        return 0;
+    }
 }

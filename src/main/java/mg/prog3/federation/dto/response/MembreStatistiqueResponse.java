@@ -9,6 +9,7 @@ public class MembreStatistiqueResponse {
     private Long membreId;
     private String membreNom;
     private String membrePrenom;
-    private Long montantEncaissement;
-    private Long montantImpaye;
+    private Long earnedAmount;
+    private Long unpaidAmount;
+    private Double assiduityPercentage;
 }

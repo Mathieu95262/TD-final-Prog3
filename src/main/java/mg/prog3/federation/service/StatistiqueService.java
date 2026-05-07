@@ -2,137 +2,120 @@ package mg.prog3.federation.service;
 
 import lombok.RequiredArgsConstructor;
 import mg.prog3.federation.dto.response.CollectiviteStatistiqueResponse;
-import mg.prog3.federation.dto.response.GlobalStatistiqueResponse;
 import mg.prog3.federation.dto.response.MembreStatistiqueResponse;
-import mg.prog3.federation.entity.Collectivite;
-import mg.prog3.federation.entity.Cotisation;
-import mg.prog3.federation.entity.Membre;
-import mg.prog3.federation.exception.BusinessException;
-import mg.prog3.federation.exception.ResourceNotFoundException;
-import mg.prog3.federation.repository.CollectiviteRepository;
-import mg.prog3.federation.repository.CotisationRepository;
-import mg.prog3.federation.repository.MembreRepository;
-import mg.prog3.federation.repository.PaiementRepository;
+import mg.prog3.federation.entity.*;
+import mg.prog3.federation.repository.*;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.Date;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
 public class StatistiqueService {
 
-    private final CollectiviteRepository collectiviteRepository;
     private final MembreRepository membreRepository;
     private final CotisationRepository cotisationRepository;
     private final PaiementRepository paiementRepository;
+    private final CollectiviteRepository collectiviteRepository;
+    private final PresenceRepository presenceRepository;
+    private final ActiviteRepository activiteRepository;
 
-    @Transactional(readOnly = true)
-    public CollectiviteStatistiqueResponse getStatistiquesCollectivite(Long collectiviteId, LocalDate debut, LocalDate fin) {
-        Collectivite collectivite = collectiviteRepository.findById(collectiviteId)
-                .orElseThrow(() -> new ResourceNotFoundException("Collectivite non trouvée: " + collectiviteId));
+    // G - Stats par membre (modifié avec assiduité)
+    public List<MembreStatistiqueResponse> getStatistiquesCollectivite(Long collectiviteId, LocalDate debut, LocalDate fin) {
+        List<Membre> membres = membreRepository.findByCollectiviteId(collectiviteId);
+        List<Cotisation> cotisationsActives = cotisationRepository.findByCollectiviteIdAndActive(collectiviteId, true);
 
-        if (debut.isAfter(fin)) {
-            throw new BusinessException("La date de début doit être antérieure à la date de fin");
-        }
+        Date dateDebut = Date.valueOf(debut);
+        Date dateFin = Date.valueOf(fin);
 
-        List<MembreStatistiqueResponse> membresStats = new ArrayList<>();
+        long totalActivites = presenceRepository.countTotalActivitesByCollectiviteAndPeriode(collectiviteId, dateDebut, dateFin);
 
-        List<Membre> membresActifs = membreRepository.findByCollectiviteId(collectiviteId)
-                .stream()
-                .filter(Membre::isActif)
-                .toList();
+        List<MembreStatistiqueResponse> stats = new ArrayList<>();
 
-        for (Membre membre : membresActifs) {
-            Long montantEncaissement = paiementRepository.sumPaiementsByMembreAndPeriode(
-                    membre.getId(), debut, fin);
+        for (Membre membre : membres) {
+            // Montant encaissé
+            List<Paiement> paiements = paiementRepository.findByMembreId(membre.getId());
+            long montantEncaissement = paiements.stream()
+                    .filter(p -> !p.getDateEncaissement().isBefore(debut) && !p.getDateEncaissement().isAfter(fin))
+                    .mapToLong(Paiement::getMontant)
+                    .sum();
 
-            Long montantImpaye = calculerMontantImpaye(collectiviteId, membre.getId(), debut, fin);
+            // Montant impayé
+            long totalCotisationsActives = cotisationsActives.stream().mapToLong(Cotisation::getMontant).sum();
+            long totalPaye = paiements.stream()
+                    .filter(p -> cotisationsActives.stream().anyMatch(c -> c.getId().equals(p.getCotisationId())))
+                    .mapToLong(Paiement::getMontant)
+                    .sum();
+            long montantImpaye = Math.max(0, totalCotisationsActives - totalPaye);
 
-            membresStats.add(MembreStatistiqueResponse.builder()
+            // Taux d'assiduité
+            long nbPresences = presenceRepository.countPresencesByMembreIdAndPeriode(membre.getId(), dateDebut, dateFin);
+            double tauxAssiduite = totalActivites > 0 ? (double) nbPresences / totalActivites * 100 : 0.0;
+            tauxAssiduite = Math.round(tauxAssiduite * 100.0) / 100.0;
+
+            stats.add(MembreStatistiqueResponse.builder()
                     .membreId(membre.getId())
                     .membreNom(membre.getNom())
                     .membrePrenom(membre.getPrenom())
-                    .montantEncaissement(montantEncaissement)
-                    .montantImpaye(montantImpaye)
+                    .earnedAmount(montantEncaissement)
+                    .unpaidAmount(montantImpaye)
+                    .assiduityPercentage(tauxAssiduite)
                     .build());
         }
-
-        return CollectiviteStatistiqueResponse.builder()
-                .collectiviteId(collectivite.getId())
-                .collectiviteNom(collectivite.getNom())
-                .membres(membresStats)
-                .build();
+        return stats;
     }
 
-    @Transactional(readOnly = true)
-    public List<GlobalStatistiqueResponse> getStatistiquesGlobales(LocalDate debut, LocalDate fin) {
-        if (debut.isAfter(fin)) {
-            throw new BusinessException("La date de début doit être antérieure à la date de fin");
-        }
+    // H - Stats globales (modifié avec assiduité)
+    public List<CollectiviteStatistiqueResponse> getStatistiquesGlobales(LocalDate debut, LocalDate fin) {
+        List<mg.prog3.federation.entity.Collectivite> collectivites = collectiviteRepository.findAll();
+        Date dateDebut = Date.valueOf(debut);
+        Date dateFin = Date.valueOf(fin);
 
-        List<Collectivite> collectivites = collectiviteRepository.findAll();
-        List<GlobalStatistiqueResponse> statsGlobales = new ArrayList<>();
+        List<CollectiviteStatistiqueResponse> stats = new ArrayList<>();
 
-        for (Collectivite collectivite : collectivites) {
-            double pourcentageAJour = calculerPourcentageMembresAJour(collectivite.getId(), debut, fin);
-            long nouveauxAdherents = paiementRepository.countNouveauxAdherents(collectivite.getId(), debut, fin);
+        for (mg.prog3.federation.entity.Collectivite c : collectivites) {
+            List<Membre> membres = membreRepository.findByCollectiviteId(c.getId());
+            List<Cotisation> cotisationsActives = cotisationRepository.findByCollectiviteIdAndActive(c.getId(), true);
 
-            statsGlobales.add(GlobalStatistiqueResponse.builder()
-                    .collectiviteId(collectivite.getId())
-                    .collectiviteNom(collectivite.getNom())
-                    .pourcentageMembresAJour(pourcentageAJour)
-                    .nombreNouveauxAdherents(nouveauxAdherents)
-                    .build());
-        }
+            // Pourcentage membres à jour
+            long membresAJour = membres.stream()
+                    .filter(m -> {
+                        List<Paiement> paiements = paiementRepository.findByMembreId(m.getId());
+                        long totalPaye = paiements.stream()
+                                .filter(p -> cotisationsActives.stream().anyMatch(co -> co.getId().equals(p.getCotisationId())))
+                                .mapToLong(Paiement::getMontant)
+                                .sum();
+                        long totalDu = cotisationsActives.stream().mapToLong(Cotisation::getMontant).sum();
+                        return totalDu == 0 || totalPaye >= totalDu;
+                    })
+                    .count();
+            double pourcentage = membres.isEmpty() ? 0 : (double) membresAJour / membres.size() * 100;
 
-        return statsGlobales;
-    }
+            // Nouveaux adhérents
+            long nouveaux = membres.stream()
+                    .filter(m -> !m.getDateAdhesion().isBefore(debut) && !m.getDateAdhesion().isAfter(fin))
+                    .count();
 
-    private Long calculerMontantImpaye(Long collectiviteId, Long membreId, LocalDate debut, LocalDate fin) {
-        List<Cotisation> cotisationsActives = cotisationRepository.findByCollectiviteIdAndActive(collectiviteId, true);
-
-        long totalCotisationsActives = cotisationsActives.stream()
-                .mapToLong(Cotisation::getMontant)
-                .sum();
-
-        long totalPaye = paiementRepository.sumPaiementsByMembreAndPeriode(membreId, debut, fin);
-
-        return Math.max(0, totalCotisationsActives - totalPaye);
-    }
-
-    private double calculerPourcentageMembresAJour(Long collectiviteId, LocalDate debut, LocalDate fin) {
-        List<Membre> membresActifs = membreRepository.findByCollectiviteId(collectiviteId)
-                .stream()
-                .filter(Membre::isActif)
-                .toList();
-
-        if (membresActifs.isEmpty()) {
-            return 0.0;
-        }
-
-        List<Cotisation> cotisationsActives = cotisationRepository.findByCollectiviteIdAndActive(collectiviteId, true);
-
-        long totalCotisations = cotisationsActives.stream()
-                .mapToLong(Cotisation::getMontant)
-                .sum();
-
-        if (totalCotisations == 0) {
-            return 100.0;
-        }
-
-        long membresAJour = 0;
-        for (Membre membre : membresActifs) {
-            long totalPaye = paiementRepository.sumPaiementsByMembreAndPeriode(
-                    membre.getId(), debut, fin);
-
-            if (totalPaye >= (totalCotisations * 0.8)) {
-                membresAJour++;
+            // Taux d'assiduité global
+            long totalPresences = 0;
+            long totalActivites = presenceRepository.countTotalActivitesByCollectiviteAndPeriode(c.getId(), dateDebut, dateFin);
+            for (Membre m : membres) {
+                totalPresences += presenceRepository.countPresencesByMembreIdAndPeriode(m.getId(), dateDebut, dateFin);
             }
-        }
+            double tauxAssiduiteGlobal = totalActivites > 0 && !membres.isEmpty()
+                    ? (double) totalPresences / (totalActivites * membres.size()) * 100 : 0.0;
+            tauxAssiduiteGlobal = Math.round(tauxAssiduiteGlobal * 100.0) / 100.0;
 
-        return (double) membresAJour / membresActifs.size() * 100.0;
+            stats.add(CollectiviteStatistiqueResponse.builder()
+                    .collectiviteId(c.getId())
+                    .collectiviteNom(c.getNom())
+                    .newMembersNumber(nouveaux)
+                    .overallMemberCurrentDuePercentage(Math.round(pourcentage * 100.0) / 100.0)
+                    .overallMemberAssiduityPercentage(tauxAssiduiteGlobal)
+                    .build());
+        }
+        return stats;
     }
 }
