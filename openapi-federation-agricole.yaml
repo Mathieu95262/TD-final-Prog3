@@ -39,10 +39,7 @@ tags:
   - name: Statistiques Fédération
     description: Rapports et statistiques agrégés de la fédération (Fonctionnalité H)
 
-# PATHS
 paths:
-
-  # A - COLLECTIVITÉS
 
   /collectivites:
     get:
@@ -180,7 +177,6 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  # B - MEMBRES
 
   /membres:
     get:

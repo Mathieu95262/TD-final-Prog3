@@ -1,18 +1,49 @@
-CREATE TYPE gender_enum AS ENUM ('MALE', 'FEMALE');
-CREATE TYPE occupation_enum AS ENUM ('JUNIOR', 'SENIOR', 'SECRETARY', 'TREASURER', 'VICE_PRESIDENT', 'PRESIDENT');
+-- Types énumérés (versions complètes fusionnées)
+DROP TYPE IF EXISTS gender_enum CASCADE;
+CREATE TYPE gender_enum AS ENUM ('MALE', 'FEMALE', 'M', 'F');
+
+DROP TYPE IF EXISTS occupation_enum CASCADE;
+CREATE TYPE occupation_enum AS ENUM (
+    'JUNIOR', 'SENIOR', 'SECRETARY', 'TREASURER',
+    'VICE_PRESIDENT', 'PRESIDENT', 'CONFIRMED',
+    'Président', 'Vice président', 'Secrétaire', 'Trésorier', 'Confirmé'
+);
+
+DROP TYPE IF EXISTS fee_type_enum CASCADE;
+CREATE TYPE fee_type_enum AS ENUM ('MONTHLY', 'ANNUAL', 'PUNCTUAL', 'ANNUALLY', 'PUNCTUALLY');
+
+DROP TYPE IF EXISTS payment_mode_enum CASCADE;
+CREATE TYPE payment_mode_enum AS ENUM ('CASH', 'BANK_TRANSFER', 'MOBILE_MONEY', 'BANK');
+
+DROP TYPE IF EXISTS account_type_enum CASCADE;
+CREATE TYPE account_type_enum AS ENUM ('CASH', 'BANK', 'MOBILE_MONEY', 'ORANGE_MONEY', 'MVOLA');
+
+DROP TYPE IF EXISTS transaction_type_enum CASCADE;
+CREATE TYPE transaction_type_enum AS ENUM ('CREDIT', 'DEBIT');
+
+DROP TYPE IF EXISTS activity_type_enum CASCADE;
+CREATE TYPE activity_type_enum AS ENUM ('MONTHLY_ASSEMBLY', 'JUNIOR_TRAINING', 'EXCEPTIONAL');
+
+DROP TYPE IF EXISTS attendance_requirement_enum CASCADE;
+CREATE TYPE attendance_requirement_enum AS ENUM ('ALL', 'JUNIORS_ONLY', 'SPECIFIC', 'OPTIONAL');
+
+DROP TYPE IF EXISTS attendance_status_enum CASCADE;
+CREATE TYPE attendance_status_enum AS ENUM ('PRESENT', 'ABSENT', 'EXCUSED');
 
 CREATE TABLE collectivity (
     id VARCHAR(255) PRIMARY KEY,
-    name VARCHAR(255) UNIQUE NOT NULL,
-    location VARCHAR(255) NOT NULL,
-    agricultural_specialty VARCHAR(255) NOT NULL,
-    creation_date DATE NOT NULL,
+    name VARCHAR(255) UNIQUE NULL,
+    location VARCHAR(255) NULL,
+    agricultural_specialty VARCHAR(255) NULL,
+    creation_date DATE NULL,
     federation_approval BOOLEAN DEFAULT FALSE,
     annual_dues BIGINT NOT NULL DEFAULT 0,
-    president_id VARCHAR(255),
-    vice_president_id VARCHAR(255),
-    treasurer_id VARCHAR(255),
-    secretary_id VARCHAR(255)
+    president_id VARCHAR(255) NULL,
+    vice_president_id VARCHAR(255) NULL,
+    treasurer_id VARCHAR(255) NULL,
+    secretary_id VARCHAR(255) NULL,
+    unique_number VARCHAR(255) UNIQUE NULL,
+    unique_name VARCHAR(255) UNIQUE NULL
 );
 
 CREATE TABLE member (
@@ -24,7 +55,7 @@ CREATE TABLE member (
     gender gender_enum NOT NULL,
     address VARCHAR(255) NOT NULL,
     profession VARCHAR(255) NOT NULL,
-    phone_number BIGINT NOT NULL,
+    phone_number VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL,
     adhesion_date DATE NOT NULL,
     occupation occupation_enum NOT NULL,
@@ -39,19 +70,17 @@ ALTER TABLE collectivity
     ADD CONSTRAINT fk_treasurer FOREIGN KEY (treasurer_id) REFERENCES member(id),
     ADD CONSTRAINT fk_secretary FOREIGN KEY (secretary_id) REFERENCES member(id);
 
+
 CREATE TABLE sponsorship (
     candidate_id VARCHAR(255) NOT NULL,
     sponsor_id VARCHAR(255) NOT NULL,
-    relationship_nature VARCHAR(255) NOT NULL,
+    relationship_nature VARCHAR(255) NULL,
     PRIMARY KEY (candidate_id, sponsor_id),
     FOREIGN KEY (candidate_id) REFERENCES member(id),
     FOREIGN KEY (sponsor_id) REFERENCES member(id)
 );
 
-CREATE TYPE fee_type_enum AS ENUM ('MONTHLY', 'ANNUAL', 'PUNCTUAL');
-CREATE TYPE payment_mode_enum AS ENUM ('CASH', 'BANK_TRANSFER', 'MOBILE_MONEY');
 
--- Membership fees defined by a collectivity
 CREATE TABLE membership_fee (
     id VARCHAR(255) PRIMARY KEY,
     collectivity_id VARCHAR(255) NOT NULL,
@@ -60,10 +89,10 @@ CREATE TABLE membership_fee (
     fee_type fee_type_enum NOT NULL,
     active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at DATE NOT NULL DEFAULT CURRENT_DATE,
+    eligible_from DATE NULL,
     FOREIGN KEY (collectivity_id) REFERENCES collectivity(id)
 );
 
--- Payments made by members
 CREATE TABLE member_payment (
     id VARCHAR(255) PRIMARY KEY,
     member_id VARCHAR(255) NOT NULL,
@@ -75,32 +104,21 @@ CREATE TABLE member_payment (
     FOREIGN KEY (membership_fee_id) REFERENCES membership_fee(id)
 );
 
--- Feature J: unique number and name assignment
-ALTER TABLE collectivity ADD COLUMN IF NOT EXISTS unique_number VARCHAR(255) UNIQUE;
-ALTER TABLE collectivity ADD COLUMN IF NOT EXISTS unique_name VARCHAR(255) UNIQUE;
-
--- Feature D: financial accounts (cash, bank, mobile money)
-CREATE TYPE account_type_enum AS ENUM ('CASH', 'BANK', 'MOBILE_MONEY');
-
 CREATE TABLE financial_account (
     id VARCHAR(255) PRIMARY KEY,
     collectivity_id VARCHAR(255) NOT NULL,
     account_type account_type_enum NOT NULL,
-    -- bank fields
-    account_holder VARCHAR(255),
-    bank_name VARCHAR(255),
-    account_number VARCHAR(255),
-    -- mobile money fields
-    mobile_holder VARCHAR(255),
-    mobile_service VARCHAR(255),
-    mobile_phone VARCHAR(255),
-    -- initial balance
     initial_balance BIGINT NOT NULL DEFAULT 0,
+    holder VARCHAR(255) NULL,
+    phone_number VARCHAR(255) NULL,
+    bank_name VARCHAR(255) NULL,
+    bank_code VARCHAR(255) NULL,
+    branch_code VARCHAR(255) NULL,
+    account_number VARCHAR(255) NULL,
+    rib_key VARCHAR(255) NULL,
+    mobile_service VARCHAR(255) NULL,
     FOREIGN KEY (collectivity_id) REFERENCES collectivity(id)
 );
-
--- Feature D: transactions (every payment in/out on an account)
-CREATE TYPE transaction_type_enum AS ENUM ('CREDIT', 'DEBIT');
 
 CREATE TABLE financial_transaction (
     id VARCHAR(255) PRIMARY KEY,
@@ -115,10 +133,6 @@ CREATE TABLE financial_transaction (
     FOREIGN KEY (collectivity_id) REFERENCES collectivity(id)
 );
 
--- Feature E: activities
-CREATE TYPE activity_type_enum AS ENUM ('MONTHLY_ASSEMBLY', 'JUNIOR_TRAINING', 'EXCEPTIONAL');
-CREATE TYPE attendance_requirement_enum AS ENUM ('ALL', 'JUNIORS_ONLY', 'SPECIFIC', 'OPTIONAL');
-
 CREATE TABLE activity (
     id VARCHAR(255) PRIMARY KEY,
     collectivity_id VARCHAR(255) NOT NULL,
@@ -129,9 +143,6 @@ CREATE TABLE activity (
     FOREIGN KEY (collectivity_id) REFERENCES collectivity(id)
 );
 
--- Feature F: attendance per activity
-CREATE TYPE attendance_status_enum AS ENUM ('PRESENT', 'ABSENT', 'EXCUSED');
-
 CREATE TABLE activity_attendance (
     activity_id VARCHAR(255) NOT NULL,
     member_id VARCHAR(255) NOT NULL,
@@ -141,3 +152,13 @@ CREATE TABLE activity_attendance (
     FOREIGN KEY (activity_id) REFERENCES activity(id),
     FOREIGN KEY (member_id) REFERENCES member(id)
 );
+
+CREATE INDEX idx_member_collectivity ON member(collectivity_id);
+CREATE INDEX idx_member_payment_member ON member_payment(member_id);
+CREATE INDEX idx_member_payment_fee ON member_payment(membership_fee_id);
+CREATE INDEX idx_fee_collectivity ON membership_fee(collectivity_id);
+CREATE INDEX idx_account_collectivity ON financial_account(collectivity_id);
+CREATE INDEX idx_transaction_account ON financial_transaction(financial_account_id);
+CREATE INDEX idx_activity_collectivity ON activity(collectivity_id);
+CREATE INDEX idx_attendance_activity ON activity_attendance(activity_id);
+CREATE INDEX idx_attendance_member ON activity_attendance(member_id);
