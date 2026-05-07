@@ -11,6 +11,7 @@ public class CotisationResponse {
     private TypeCotisation typeCotisation;
     private Long montant;
     private String description;
+    private boolean active;
     private Long collectiviteId;
     private String collectiviteNom;
 }

@@ -16,4 +16,5 @@ public class Cotisation {
     private Long montant;
     private String description;
     private Long collectiviteId;
+    private boolean active;
 }

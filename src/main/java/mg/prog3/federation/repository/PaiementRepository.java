@@ -77,8 +77,8 @@ public class PaiementRepository {
         List<Paiement> paiements = new ArrayList<>();
         String sql = """
             SELECT p.* FROM paiements p
-            JOIN cotisations c ON p.cotisation_id = c.id
-            WHERE c.collectivite_id = ? AND p.date_encaissement BETWEEN ? AND ?
+            JOIN membres m ON p.membre_id = m.id
+            WHERE m.collectivite_id = ? AND p.date_encaissement BETWEEN ? AND ?
         """;
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setLong(1, collectiviteId);
@@ -90,9 +90,49 @@ public class PaiementRepository {
                 }
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Erreur lors de la recherche par période", e);
+            throw new RuntimeException("Erreur lors de la recherche des paiements par période", e);
         }
         return paiements;
+    }
+
+    public Long sumPaiementsByMembreAndPeriode(Long membreId, LocalDate debut, LocalDate fin) {
+        String sql = """
+            SELECT COALESCE(SUM(montant), 0) FROM paiements 
+            WHERE membre_id = ? AND date_encaissement BETWEEN ? AND ?
+        """;
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setLong(1, membreId);
+            ps.setDate(2, Date.valueOf(debut));
+            ps.setDate(3, Date.valueOf(fin));
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getLong(1);
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur lors du calcul de la somme des paiements", e);
+        }
+        return 0L;
+    }
+
+    public Long countNouveauxAdherents(Long collectiviteId, LocalDate debut, LocalDate fin) {
+        String sql = """
+            SELECT COUNT(*) FROM membres 
+            WHERE collectivite_id = ? AND date_adhesion BETWEEN ? AND ? AND actif = true
+        """;
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setLong(1, collectiviteId);
+            ps.setDate(2, Date.valueOf(debut));
+            ps.setDate(3, Date.valueOf(fin));
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getLong(1);
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur lors du comptage des nouveaux adhérents", e);
+        }
+        return 0L;
     }
 
     private Paiement mapRow(ResultSet rs) throws SQLException {

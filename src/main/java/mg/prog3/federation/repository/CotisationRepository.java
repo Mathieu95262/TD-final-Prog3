@@ -28,14 +28,15 @@ public class CotisationRepository {
 
     private Cotisation insert(Cotisation c) {
         String sql = """
-            INSERT INTO cotisations (type_cotisation, montant, description, collectivite_id)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO cotisations (type_cotisation, montant, description, collectivite_id, active)
+            VALUES (?, ?, ?, ?, ?)
         """;
         try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, c.getTypeCotisation().name());
             ps.setLong(2, c.getMontant());
             ps.setString(3, c.getDescription());
             ps.setLong(4, c.getCollectiviteId());
+            ps.setBoolean(5, c.isActive());
             ps.executeUpdate();
             try (ResultSet rs = ps.getGeneratedKeys()) {
                 if (rs.next()) {
@@ -50,7 +51,7 @@ public class CotisationRepository {
 
     private Cotisation update(Cotisation c) {
         String sql = """
-            UPDATE cotisations SET type_cotisation=?, montant=?, description=?, collectivite_id=?
+            UPDATE cotisations SET type_cotisation=?, montant=?, description=?, collectivite_id=?, active=?
             WHERE id=?
         """;
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
@@ -58,7 +59,8 @@ public class CotisationRepository {
             ps.setLong(2, c.getMontant());
             ps.setString(3, c.getDescription());
             ps.setLong(4, c.getCollectiviteId());
-            ps.setLong(5, c.getId());
+            ps.setBoolean(5, c.isActive());
+            ps.setLong(6, c.getId());
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Erreur lors de la mise à jour de la cotisation", e);
@@ -112,6 +114,34 @@ public class CotisationRepository {
         return cotisations;
     }
 
+    public List<Cotisation> findByCollectiviteIdAndActive(Long collectiviteId, Boolean active) {
+        List<Cotisation> cotisations = new ArrayList<>();
+        String sql = "SELECT * FROM cotisations WHERE collectivite_id = ? AND active = ?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setLong(1, collectiviteId);
+            ps.setBoolean(2, active);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    cotisations.add(mapRow(rs));
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur lors de la recherche des cotisations actives", e);
+        }
+        return cotisations;
+    }
+
+    public void updateStatus(Long cotisationId, boolean active) {
+        String sql = "UPDATE cotisations SET active = ? WHERE id = ?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setBoolean(1, active);
+            ps.setLong(2, cotisationId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur lors de la mise à jour du statut", e);
+        }
+    }
+
     private Cotisation mapRow(ResultSet rs) throws SQLException {
         return Cotisation.builder()
                 .id(rs.getLong("id"))
@@ -119,6 +149,7 @@ public class CotisationRepository {
                 .montant(rs.getLong("montant"))
                 .description(rs.getString("description"))
                 .collectiviteId(rs.getLong("collectivite_id"))
+                .active(rs.getBoolean("active"))
                 .build();
     }
 }
