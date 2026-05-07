@@ -13,4 +13,4 @@ app:
   datasource:
     url: jdbc:postgresql://localhost:5432/agricol_federation
     username: postgres
-    password: admin123
+    password: Adminsql
